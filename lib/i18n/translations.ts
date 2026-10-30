@@ -16,7 +16,6 @@ export const translations = {
     viewCards: 'Targetes',
     viewTimeline: 'Cronograma Visual',
     copilotBtn: 'LabQA Copilot IA',
-    n8nBtn: 'Automatització n8n',
     themeLight: 'Mode Clar',
     themeDark: 'Mode Fosc',
 
@@ -94,25 +93,6 @@ export const translations = {
     copilotStreamBadge: 'Stream SSE',
     copilotStandardsTitle: 'Normes i procediments:',
     copilotConnecting: 'Connectant amb assistent tècnic...',
-
-    // n8n
-    n8nTitle: 'Flux d\'Automatització n8n — Lab Qualitat',
-    n8nSubtitle: 'Integració de webhooks per a notificacions i gestió de laboratoris',
-    n8nWorkflowTitle: 'Flux de Nodes Automatitzats',
-    n8nNode1Name: '1. Webhook',
-    n8nNode1Desc: 'Disparador de Visita',
-    n8nNode2Name: '2. Telegram',
-    n8nNode2Desc: 'Avís Tècnic de Camp',
-    n8nNode3Name: '3. Lab Central',
-    n8nNode3Desc: 'Reserva Càmera Provetes',
-    n8nNode4Name: '4. ERP ISO 9001',
-    n8nNode4Desc: 'Traçabilitat i Acta',
-    n8nWebhookUrl: 'Webhook Endpoint (n8n Cloud / Self-hosted):',
-    n8nPayloadTitle: 'Payload JSON Transmès al Webhook',
-    n8nSimulateBtn: 'Simular Execució del Webhook',
-    n8nCopySuccess: 'Copiat!',
-    n8nCopyBtn: 'Copiar JSON',
-    n8nSimulating: 'Executant Workflow n8n...',
   },
   es: {
     // Header
@@ -126,7 +106,6 @@ export const translations = {
     viewCards: 'Tarjetas',
     viewTimeline: 'Cronograma Visual',
     copilotBtn: 'LabQA Copilot IA',
-    n8nBtn: 'Automatización n8n',
     themeLight: 'Modo Claro',
     themeDark: 'Modo Oscuro',
 
@@ -204,24 +183,5 @@ export const translations = {
     copilotStreamBadge: 'Stream SSE',
     copilotStandardsTitle: 'Normas y procedimientos:',
     copilotConnecting: 'Conectando con asistente técnico...',
-
-    // n8n
-    n8nTitle: 'Flujo de Automatización n8n — Lab Calidad',
-    n8nSubtitle: 'Integración de webhooks para notificaciones y gestión de laboratorio',
-    n8nWorkflowTitle: 'Flujo de Nodos Automatizados',
-    n8nNode1Name: '1. Webhook',
-    n8nNode1Desc: 'Disparador de Visita',
-    n8nNode2Name: '2. Telegram',
-    n8nNode2Desc: 'Aviso Técnico de Campo',
-    n8nNode3Name: '3. Lab Central',
-    n8nNode3Desc: 'Reserva Cámara Probetas',
-    n8nNode4Name: '4. ERP ISO 9001',
-    n8nNode4Desc: 'Trazabilidad y Acta',
-    n8nWebhookUrl: 'Webhook Endpoint (n8n Cloud / Self-hosted):',
-    n8nPayloadTitle: 'Payload JSON Transmitido al Webhook',
-    n8nSimulateBtn: 'Simular Ejecución del Webhook',
-    n8nCopySuccess: '¡Copiado!',
-    n8nCopyBtn: 'Copiar JSON',
-    n8nSimulating: 'Ejecutando Workflow n8n...',
   },
 };

@@ -44,7 +44,6 @@ graph TD
     Actions --> Rules["Motor Matemático Puro (Reglas A, B, C)"]
     Rules --> Routing["Servicio Geo Vallès a Coste 0€ (Matriz + Haversine)"]
     Actions --> Prisma["Prisma ORM (PostgreSQL Serverless / Memory Fallback)"]
-    Actions --> N8N["Webhook Asíncrono n8n (Simulador de Eventos)"]
     UI --> Copilot["LabQA Copilot RAG Híbrido"]
     Copilot --> Guardrails["Guardarraíles Anti-Alucinación (0ms)"]
     Guardrails --> Cache["Caché Semántica Local (0ms)"]
@@ -59,13 +58,10 @@ graph TD
    - **Caché Semántica y Léxica:** Coeficiente Jaccard y trigramas para respuestas instantáneas.
 2. **Modo Llamada de Voz en Vivo (Voice Call):**
    - Integrado en el Copilot con Web Speech API (`SpeechRecognition` y `speechSynthesis`) para interacción manos libres en obra.
-3. **Simulador Visual de Automatizaciones n8n:**
-   - Al programar o cancelar una visita, visualiza la orquestación en tiempo real:
-     `Webhook Trigger` ➔ `Notificación Telegram al Técnico` ➔ `Reserva Cámara Húmeda 20ºC` ➔ `ERP ISO 9001`.
-4. **Diseño Artesanal Apple & Linear (Light / Dark Mode):**
+3. **Diseño Artesanal Apple & Linear (Light / Dark Mode):**
    - Cuadrícula horaria de 08:00 a 17:00 con 4 carriles simultáneos de técnicos, bloques de visita proporcionales y bloques de traslado calculados según ruta.
    - Conmutador inmediato de tema Claro / Oscuro con contraste accesible WCAG AA y números tabulares (`tabular-nums`).
-5. **Bilingüismo Nativo Instantáneo [Català / Castellano]:**
+4. **Bilingüismo Nativo Instantáneo [Català / Castellano]:**
    - Conmutador en cabecera con traducción técnica rigurosa del sector de la construcción.
 
 ---
@@ -207,13 +203,12 @@ El proyecto está preparado para despliegue directo *Zero-Config* en Vercel:
 │   ├── layout.tsx           # Layout raíz con viewport optimizado
 │   └── page.tsx             # Server component de entrada con prefetch de datos
 ├── components/
-│   ├── Header.tsx           # Cabecera con KPIs, selector CAT/ES, conmutador de tema, vistas y n8n
+│   ├── Header.tsx           # Cabecera con KPIs, selector CAT/ES, conmutador de tema y vistas
 │   ├── TimelineView.tsx     # Cronograma visual interactivo (4 carriles, bloques de traslado)
 │   ├── VisitsList.tsx       # Vista alternativa de tarjetas de visita
 │   ├── FilterBar.tsx        # Filtros segmentados por técnico, fecha, estado y buscador
 │   ├── ScheduleModal.tsx    # Modal de agendamiento con avisos de error (Reglas A, B, C)
 │   ├── CopilotPanel.tsx     # Panel lateral RAG con chat técnico, modo llamada de voz y /help
-│   ├── N8NModal.tsx         # Simulador visual de flujos automatizados de n8n
 │   └── Dashboard.tsx        # Coordinador reactivo con Optimistic UI
 ├── lib/
 │   ├── actions/             # Server Actions (scheduleVisitAction, cancelVisitAction, etc.)

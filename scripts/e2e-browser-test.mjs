@@ -59,12 +59,16 @@ async function runE2ETests() {
     dynamicTravelCardSufficient: false,
     scheduleModalClose: false,
     cancelVisitAction: false,
+    headerNoN8n: false,
+    headerBalancedControls: false,
+    scheduleValidVisitCleanToast: false,
     copilotNoSseMention: false,
     copilotGuardrailAlvaro: false,
     copilotGuardrailPaella: false,
     copilotTechnicalAbrams: false,
     copilotHelpChipVisible: false,
     copilotHelpResponse: false,
+    copilotHelpNoN8n: false,
     copilotTechStackResponse: false,
     noConsoleErrors: false,
   };
@@ -119,6 +123,35 @@ async function runE2ETests() {
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '01_base_load.png'), fullPage: false });
     console.log('  📸 Captura guardada: 01_base_load.png\n');
+
+    // -------------------------------------------------------------------------
+    // 1.B VERIFICACIÓN DE CABECERA Y AUSENCIA TOTAL DE N8N
+    // -------------------------------------------------------------------------
+    console.log('▶ [1.B] Verificando Cabecera Equilibrada y Ausencia Total de n8n...');
+    const n8nElementsCount = await page.locator('header button:has-text("n8n"), header *:has-text("n8n")').count();
+    console.log(`  ✔ Botón n8n ausente en cabecera (count = 0): ${n8nElementsCount === 0}`);
+    if (n8nElementsCount === 0) {
+      testResults.headerNoN8n = true;
+    }
+
+    const hasThemeButton = (await page.locator('header button:has(svg.lucide-sun), header button:has(svg.lucide-moon)').count()) > 0;
+    const hasLangSwitch = (await page.getByRole('button', { name: 'CAT', exact: true }).isVisible()) &&
+                          (await page.getByRole('button', { name: 'ES', exact: true }).isVisible());
+    const hasViewSwitch = (await page.locator('header button:has(svg.lucide-calendar-range)').isVisible()) &&
+                          (await page.locator('header button:has(svg.lucide-layout-grid)').isVisible());
+    const hasScheduleButton = await page.locator('header button:has(svg.lucide-plus)').isVisible();
+
+    console.log(`  ✔ Conmutador de Tema presente: ${hasThemeButton}`);
+    console.log(`  ✔ Switch Bilingüe (CAT/ES) presente: ${hasLangSwitch}`);
+    console.log(`  ✔ Selector de Vistas (Cronograma/Tarjetas) presente: ${hasViewSwitch}`);
+    console.log(`  ✔ Botón Nueva Visita presente: ${hasScheduleButton}`);
+
+    if (hasThemeButton && hasLangSwitch && hasViewSwitch && hasScheduleButton) {
+      testResults.headerBalancedControls = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '14_header_no_n8n.png'), fullPage: false });
+    console.log('  📸 Captura guardada: 14_header_no_n8n.png\n');
 
     // -------------------------------------------------------------------------
     // 2. AJUSTE VISUAL DE LEYENDA EN CRONOGRAMA (TimelineView)
@@ -318,6 +351,72 @@ async function runE2ETests() {
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '07_modal_closed.png'), fullPage: false });
     console.log('  📸 Captura guardada: 07_modal_closed.png\n');
+
+    // Flujo de Agendamiento Válido y Verificación de Toast Limpio sin n8n
+    console.log('  [Agendamiento] Probando agendamiento de visita válida y Toast limpio sin n8n...');
+    const newVisitBtn = page.locator('header button:has(svg.lucide-plus)').first();
+    await newVisitBtn.click();
+    await page.waitForSelector('.apple-modal-overlay', { timeout: 5000 });
+
+    // Seleccionar técnico (Sofía Navarro)
+    const validTechSelect = page.locator('.apple-modal-overlay select').nth(0);
+    const techOptions = await validTechSelect.locator('option').all();
+    for (const opt of techOptions) {
+      const text = await opt.textContent();
+      if (text && text.includes('Sofía')) {
+        const val = await opt.getAttribute('value');
+        if (val) await validTechSelect.selectOption(val);
+        break;
+      }
+    }
+
+    // Seleccionar obra (Pozuelo de Alarcón)
+    const validSiteSelect = page.locator('.apple-modal-overlay select').nth(1);
+    const validSiteOptions = await validSiteSelect.locator('option').all();
+    for (const opt of validSiteOptions) {
+      const text = await opt.textContent();
+      if (text && text.includes('Pozuelo')) {
+        const val = await opt.getAttribute('value');
+        if (val) await validSiteSelect.selectOption(val);
+        break;
+      }
+    }
+
+    // Hora válida sin conflicto: 10:00 (Sofía está libre toda la mañana)
+    const validTimeInput = page.locator('.apple-modal-overlay input[type="time"]');
+    await validTimeInput.fill('10:00');
+    await page.waitForTimeout(400);
+
+    // Enviar formulario mediante botón submit "Confirmar y Agendar Visita" en el diálogo
+    const submitBtn = page.locator('.apple-modal-overlay button[type="submit"]');
+    await page.waitForFunction(() => {
+      const btn = document.querySelector('.apple-modal-overlay button[type="submit"]');
+      return btn && !btn.hasAttribute('disabled');
+    }, { timeout: 5000 });
+
+    await submitBtn.click();
+    await page.waitForTimeout(600);
+
+    // Esperar a que el modal se cierre y aparezca el Toast flotante
+    await page.waitForSelector('.fixed.bottom-6.right-6', { timeout: 8000 });
+    const toastElement = page.locator('.fixed.bottom-6.right-6').first();
+    const toastText = (await toastElement.textContent()) || '';
+    console.log(`  ✔ Toast de confirmación capturado: "${toastText.trim()}"`);
+
+    const isSuccessToast = toastText.includes('Visita agendada con éxito') || toastText.includes('Visita agendada amb èxit');
+    const hasNoN8nInToast = !toastText.toLowerCase().includes('n8n') &&
+                            !toastText.toLowerCase().includes('webhook') &&
+                            !toastText.toLowerCase().includes('telegram');
+
+    console.log(`  ✔ Toast contiene confirmación de éxito: ${isSuccessToast}`);
+    console.log(`  ✔ Toast libre de cualquier mención a n8n o automatizaciones: ${hasNoN8nInToast}`);
+
+    if (isSuccessToast && hasNoN8nInToast) {
+      testResults.scheduleValidVisitCleanToast = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '15_schedule_clean_toast.png'), fullPage: false });
+    console.log('  📸 Captura guardada: 15_schedule_clean_toast.png\n');
 
     // Cancelación optimista de una visita
     console.log('  Probando cancelación de visita y liberación de horario...');
@@ -561,6 +660,7 @@ async function runE2ETests() {
         text.includes('AEMET');
       const hasDoc00 = text.includes('DOC-00');
       const hasDoc12 = text.includes('DOC-12');
+      const hasNoN8nInHelp = !text.toLowerCase().includes('n8n');
 
       return {
         text,
@@ -569,6 +669,7 @@ async function runE2ETests() {
         hasFutureImprovements,
         hasDoc00,
         hasDoc12,
+        hasNoN8nInHelp,
       };
     });
 
@@ -576,6 +677,7 @@ async function runE2ETests() {
     console.log(`    ✔ Mención explícita al marco de ~3 horas de desarrollo: ${helpEvaluation.has3HoursLimit}`);
     console.log(`    ✔ Incluye los 4 vectores de mejoras futuras (Function Calling, RBAC, pgvector, AEMET): ${helpEvaluation.hasFutureImprovements}`);
     console.log(`    ✔ Cita insignias oficiales [DOC-00] y [DOC-12]: ${helpEvaluation.hasDoc00 && helpEvaluation.hasDoc12}`);
+    console.log(`    ✔ Ausencia total de n8n en el manual y mejoras futuras: ${helpEvaluation.hasNoN8nInHelp}`);
 
     if (
       helpEvaluation.hasRules &&
@@ -587,8 +689,14 @@ async function runE2ETests() {
       testResults.copilotHelpResponse = true;
     }
 
+    if (helpEvaluation.hasNoN8nInHelp) {
+      testResults.copilotHelpNoN8n = true;
+    }
+
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '12_copilot_help_command.png'), fullPage: false });
     console.log('    📸 Captura guardada: 12_copilot_help_command.png');
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '16_copilot_help_no_n8n.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 16_copilot_help_no_n8n.png');
 
     // -------------------------------------------------------------------------
     // PRUEBA 5: Consulta sobre Tecnologías y Stack del Sistema

@@ -110,7 +110,7 @@ export function evaluateGuardrails(
 • **Cronograma Gràfic Interactiu:** Disseny Apple & Linear amb 4 carrils simultanis per tècnic i blocs visuals de trasllat viari calculat.
 • **Logística i Geolocalització a Cost 0€:** Matriu de distàncies del Vallès amb marge logístic de +5 minuts (estacionament, recepció i custòdia de provetes) i càlcul geodèsic Haversine amb tortuositat viària (τ = 1.32).
 • **Copilot RAG Híbrid:** Assistent amb IA (Google Gemini API) i base de coneixement tècnic oficial homologada (13 documents), memòria cau semàntica a 0ms i guardarraïls anti-al·lucinació estrictes.
-• **Automatitzacions i Trucada de Veu:** Simulador de fluxos asíncrons n8n i mode trucada de veu interactiva en viu amb Web Speech API.
+• **Trucada de Veu en Viu:** Mode trucada de veu interactiva en temps real amb Web Speech API.
 
 **Marc Temporal de Desenvolupament (Prova Tècnica de ~3 Hores):**
 Aquest prototip d'alt nivell va ser concebut, estructurat i blindat en un marge intensiu d'aproximadament 3 hores. Es va prioritzar la robustesa del motor pur de negoci, zero fallades silencioses, una suite de tests completa i una experiència d'usuari bilingüe nativa (Català / Castellà) amb mode fosc/clar d'alt contrast.
@@ -129,7 +129,7 @@ Es un planificador operativo de alta ingeniería para el control de calidad y en
 • **Cronograma Gráfico Interactivo:** Diseño Apple & Linear con 4 carriles simultáneos por técnico y bloques visuales de traslado vial calculado.
 • **Logística y Geolocalización a Coste 0€:** Matriz de distancias del Vallès con margen logístico de +5 minutos (estacionamiento, recepción y custodia de probetas) y cálculo geodésico Haversine con tortuosidad viaria (τ = 1.32).
 • **Copilot RAG Híbrido:** Asistente con IA (Google Gemini API) y base de conocimiento técnico oficial homologada (13 documentos), memoria caché semántica a 0ms y guardarraíles anti-alucinación estrictos.
-• **Automatizaciones y Llamada de Voz:** Simulador de flujos asíncronos n8n y modo llamada de voz interactiva en vivo con Web Speech API.
+• **Llamada de Voz en Vivo:** Modo llamada de voz interactiva en tiempo real con Web Speech API.
 
 **Marco Temporal de Desarrollo (Prueba Técnica de ~3 Horas):**
 Este prototipo de alto nivel fue concebido, estructurado y blindado en un margen intensivo de aproximadamente 3 horas. Se priorizó la robustez del motor puro de negocio, cero fallos silenciosos, una suite de tests completa y una experiencia de usuario bilingüe nativa (Català / Español) con modo oscuro/claro de alto contraste.

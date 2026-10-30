@@ -51,11 +51,10 @@ MANUAL INTEGRAL DEL SISTEMA Y ARQUITECTURA TÉCNICA DEL PLANIFICADOR:
    - Guardarraíles anti-alucinación estrictos: bloqueo de materias ajenas a secas y reporte de plantilla oficial de técnicos homologados (Carlos Gómez, Laura Martín, Alejandro Ruiz, Sofía Navarro).
    - Modo llamada de voz en tiempo real con Web Speech API y comando ejecutivo /help.
 
-5. Automatizaciones y Telemetría:
-   - Simulador de webhooks n8n (Webhook Trigger -> Notificación Telegram -> Reserva Cámara Húmeda -> ERP ISO 9001).
-   - Internacionalización bilingüe nativa e instantánea [Català / Español].
+5. Internacionalización y Usabilidad:
+   - Internacionalización bilingüe nativa e instantánea [Català / Español] con terminología técnica del sector de la construcción.
     `,
-    tags: ['sistema', 'manual', 'arquitectura', 'nextjs', 'typescript', 'prisma', 'tailwind', 'regla a', 'regla b', 'regla c', 'copilot', 'gemini', 'rag', 'n8n', 'help', 'ayuda', 'ajuda'],
+    tags: ['sistema', 'manual', 'arquitectura', 'nextjs', 'typescript', 'prisma', 'tailwind', 'regla a', 'regla b', 'regla c', 'copilot', 'gemini', 'rag', 'help', 'ayuda', 'ajuda'],
   },
   {
     id: 'DOC-01',
@@ -266,7 +265,6 @@ HOJA DE RUTA DE PRODUCCIÓN, MARCO DE 3 HORAS Y MEJORAS FUTURAS:
 2. Funcionalidades de Alto Valor Agregadas en el Plazo:
    - Matriz de rutas local calibrada del Vallès a coste 0€ (evitando facturación por llamadas a Google Distance Matrix API).
    - Modo llamada de voz interactiva bidireccional (Speech-to-Text y Text-to-Speech) integrado en el Copilot.
-   - Simulador interactivo de workflows n8n para orquestación de eventos de laboratorio.
    - Sistema de guardarraíles anti-alucinación sin fallos silenciosos y comando rápido /help.
 
 3. Mejoras Futuras Prioritarias (Evolución a Producción sin Límite de Tiempo):

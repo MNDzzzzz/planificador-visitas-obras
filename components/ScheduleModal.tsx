@@ -258,7 +258,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto apple-modal-overlay">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto apple-modal-overlay"
+    >
       <div className="relative w-full max-w-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-3xl shadow-2xl overflow-hidden my-8">
         
         {/* Cabecera del Modal */}
@@ -268,7 +273,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+              <h2 id="modal-title" className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
                 {t.modalTitle}
               </h2>
               <p className="text-xs text-[var(--text-secondary)]">

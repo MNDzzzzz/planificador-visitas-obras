@@ -14,8 +14,7 @@ import { VisitsList } from './VisitsList';
 import { TimelineView } from './TimelineView';
 import { ScheduleModal } from './ScheduleModal';
 import { CopilotPanel } from './CopilotPanel';
-import { N8NModal } from './N8NModal';
-import { CheckCircle, Info, Zap } from 'lucide-react';
+import { CheckCircle, Info } from 'lucide-react';
 import { Language, translations } from '../lib/i18n/translations';
 
 interface DashboardProps {
@@ -62,11 +61,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
 
   // Modales interactivos
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isN8nOpen, setIsN8nOpen] = useState(false);
-  const [latestVisitForN8n, setLatestVisitForN8n] = useState<VisitDTO | null>(null);
   const [toastMessage, setToastMessage] = useState<{
     text: string;
-    type: 'success' | 'info' | 'n8n';
+    type: 'success' | 'info';
   } | null>(null);
 
   // Estadísticas globales
@@ -144,16 +141,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
       })
     );
     setIsScheduleModalOpen(false);
-    setLatestVisitForN8n(newVisit);
 
-    // Toast informativo con simulación de n8n
+    // Toast informativo de confirmación
     setToastMessage({
       text: language === 'ca'
-        ? 'Visita agendada amb èxit. Disparat webhook n8n ➔ Notificat tècnic i reservat laboratori.'
-        : 'Visita agendada con éxito. Disparado webhook n8n ➔ Notificado técnico y reservado laboratorio.',
-      type: 'n8n',
+        ? 'Visita agendada amb èxit.'
+        : 'Visita agendada con éxito.',
+      type: 'success',
     });
-    setTimeout(() => setToastMessage(null), 5000);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   return (
@@ -163,16 +159,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
         <div className="fixed bottom-6 right-6 z-50 transition-all duration-200 transform translate-y-0 opacity-100">
           <div
             className={`px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-2xl text-xs sm:text-sm font-semibold ${
-              toastMessage.type === 'n8n'
-                ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 border-orange-500/40 text-orange-600 dark:text-orange-200'
-                : toastMessage.type === 'success'
+              toastMessage.type === 'success'
                 ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
                 : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-primary)]'
             }`}
           >
-            {toastMessage.type === 'n8n' ? (
-              <Zap className="w-4 h-4 text-orange-500 shrink-0" />
-            ) : toastMessage.type === 'success' ? (
+            {toastMessage.type === 'success' ? (
               <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
             ) : (
               <Info className="w-4 h-4 text-[#2997FF] shrink-0" />
@@ -194,7 +186,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
-        onOpenN8n={() => setIsN8nOpen(true)}
       />
 
       {/* Main Content: Full-Width 100% Canvas con Grid Dividido (8 cols / 4 cols) */}
@@ -263,14 +254,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
         }}
         defaultDate={selectedDate || todayStr}
         language={language}
-      />
-
-      {/* Modal Simulador n8n */}
-      <N8NModal
-        isOpen={isN8nOpen}
-        onClose={() => setIsN8nOpen(false)}
-        language={language}
-        latestVisit={latestVisitForN8n || visits[0]}
       />
     </div>
   );

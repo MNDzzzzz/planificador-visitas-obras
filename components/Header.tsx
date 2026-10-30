@@ -4,7 +4,6 @@ import React from 'react';
 import {
   Plus,
   HardHat,
-  Zap,
   LayoutGrid,
   CalendarRange,
   Sun,
@@ -23,7 +22,6 @@ interface HeaderProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenScheduleModal: () => void;
-  onOpenN8n: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,7 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
   theme,
   onToggleTheme,
   onOpenScheduleModal,
-  onOpenN8n,
 }) => {
   const t = translations[language];
 
@@ -63,12 +60,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Acciones de Cabecera: Conmutadores, Modo Claro/Oscuro, n8n y Nueva Visita */}
+        {/* Acciones de Cabecera: Conmutadores, Modo Claro/Oscuro y Nueva Visita */}
         <div className="flex items-center gap-2 sm:gap-2.5 w-full md:w-auto justify-between md:justify-end flex-wrap">
           {/* Conmutador Modo Claro / Modo Oscuro */}
           <button
             onClick={onToggleTheme}
-            className="apple-press h-[34px] px-2.5 rounded-xl bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-medium flex items-center justify-center cursor-pointer transition-colors"
+            className="apple-press w-[34px] h-[34px] p-0 rounded-xl bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-xs font-medium flex items-center justify-center cursor-pointer transition-colors shrink-0"
             title={theme === 'dark' ? t.themeLight : t.themeDark}
           >
             {theme === 'dark' ? (
@@ -79,12 +76,12 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* Switch Bilingüe CAT / ES */}
-          <div className="bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] p-0.5 rounded-xl flex items-center h-[34px] text-xs font-medium">
+          <div className="bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] p-0.5 rounded-xl flex items-center h-[34px] text-xs font-medium shrink-0">
             <button
               onClick={() => onLanguageChange('ca')}
-              className={`h-full px-2.5 rounded-lg transition-all cursor-pointer flex items-center ${
+              className={`apple-press h-full px-2.5 rounded-lg transition-all cursor-pointer flex items-center ${
                 language === 'ca'
-                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-semibold'
+                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs font-semibold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
@@ -92,9 +89,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <button
               onClick={() => onLanguageChange('es')}
-              className={`h-full px-2.5 rounded-lg transition-all cursor-pointer flex items-center ${
+              className={`apple-press h-full px-2.5 rounded-lg transition-all cursor-pointer flex items-center ${
                 language === 'es'
-                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-semibold'
+                  ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs font-semibold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
@@ -103,12 +100,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Switch de Vistas: Targetes vs Cronograma */}
-          <div className="bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] p-0.5 rounded-xl flex items-center h-[34px] text-xs font-medium">
+          <div className="bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] p-0.5 rounded-xl flex items-center h-[34px] text-xs font-medium shrink-0">
             <button
               onClick={() => onViewChange('timeline')}
-              className={`h-full px-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`apple-press h-full px-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 currentView === 'timeline'
-                  ? 'bg-[#2997FF] text-white shadow-sm font-semibold'
+                  ? 'bg-[#2997FF] text-white shadow-xs font-semibold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
               title={t.viewTimeline}
@@ -118,9 +115,9 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
             <button
               onClick={() => onViewChange('cards')}
-              className={`h-full px-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`apple-press h-full px-2.5 rounded-lg flex items-center gap-1.5 transition-all cursor-pointer ${
                 currentView === 'cards'
-                  ? 'bg-[#2997FF] text-white shadow-sm font-semibold'
+                  ? 'bg-[#2997FF] text-white shadow-xs font-semibold'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
               title={t.viewCards}
@@ -130,20 +127,10 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Botón de Automatización n8n */}
-          <button
-            onClick={onOpenN8n}
-            className="apple-press h-[34px] px-2.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 border border-orange-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Integración n8n Webhook"
-          >
-            <Zap className="w-3.5 h-3.5 text-orange-500" />
-            <span>n8n</span>
-          </button>
-
           {/* Botón de Acción Principal "Nueva Visita" */}
           <button
             onClick={onOpenScheduleModal}
-            className="apple-press h-[34px] inline-flex items-center gap-1.5 px-3.5 rounded-xl bg-[#2997FF] hover:bg-[#0077ED] text-white text-xs sm:text-sm font-semibold shadow-[0_2px_12px_rgba(41,151,255,0.35)] cursor-pointer"
+            className="apple-press h-[34px] inline-flex items-center gap-1.5 px-3.5 rounded-xl bg-[#2997FF] hover:bg-[#0077ED] text-white text-xs sm:text-sm font-semibold shadow-[0_2px_12px_rgba(41,151,255,0.35)] cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>{t.newVisitBtn}</span>
