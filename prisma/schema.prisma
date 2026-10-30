@@ -1,0 +1,60 @@
+// Prisma Schema para Planificador de Visitas a Obras
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum VisitStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+model Technician {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String
+  specialty String
+  color     String   // Color en formato hex para avatares (diseño Apple)
+  createdAt DateTime @default(now())
+  visits    Visit[]
+
+  @@map("technicians")
+}
+
+model Site {
+  id           String   @id @default(cuid())
+  name         String
+  municipality String
+  address      String
+  createdAt    DateTime @default(now())
+  visits       Visit[]
+
+  @@map("sites")
+}
+
+model Visit {
+  id              String      @id @default(cuid())
+  technicianId    String
+  technician      Technician  @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  siteId          String
+  site            Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  date            String      // Formato YYYY-MM-DD
+  startTime       String      // Formato HH:mm (Europe/Madrid)
+  durationMinutes Int         // Duración en minutos
+  endTime         String      // Formato HH:mm (Europe/Madrid)
+  status          VisitStatus @default(SCHEDULED)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Índice compuesto optimizado según skill prisma-patterns
+  @@index([technicianId, date, status])
+  @@index([date])
+  @@map("visits")
+}
