@@ -1,7 +1,7 @@
 # Informe de Decisiones Técnicas, Alcance y Uso de IA
 
 **Proyecto:** Planificador de Visitas a Obras y Control de Ensayos Técnicos  
-**Candidatura:** Ingeniero/a de Software y Automatización con IA (Terrassa, Barcelona)  
+**Naturaleza:** Prueba Técnica — Arquitectura de Software y Automatización con IA  
 **Entorno de Desarrollo:** Antigravity Multi-Agent OS con Skills de `anthropics/skills` y `emilkowalski/skills`
 
 ---
@@ -16,10 +16,13 @@
   - Listado de visitas ordenado cronológicamente con filtros combinados en tiempo real por técnico, fecha, estado y buscador textual.
 - **Diferenciadores Técnicos y Funcionales Añadidos:**
   - **Cronograma Visual (Timeline de Obra estilo Linear):** Cuadrícula horaria de 08:00 a 17:00 en 4 carriles donde las visitas son bloques físicos y los traslados obligatorios de 30 minutos se visualizan como bloques rayados translúcidos.
-  - **LabQA Copilot (RAG con Google Gemini):** Asistente de inteligencia artificial conectado a la documentación técnica real del sector (UNE-EN 12350, roturas de probetas a 7 y 28 días, ISO 9001, ensayos geotécnicos).
+  - **LabQA Copilot (Panel Fijo RAG con Google Gemini 3.5 Flash):** Asistente de inteligencia artificial persistente en pantalla conectado a 10 documentos técnicos del sector (hormigón UNE-EN 12350, roturas de probetas a 7 y 28 días, ISO 9001, ensayos geotécnicos, acústica DB-HR, EPIs, cubiertas, RITE, topografía UNE-EN 13670).
+  - **Guardarraíles Anti-Alucinación:** Si el usuario pregunta cosas no registradas o inventadas, el sistema no especula y redirige con rigor al documento más próximo.
   - **Modo Llamada con IA (Voice Call):** Speech-to-Text nativo en navegador (`webkitSpeechRecognition`) con indicador visual de voz y Text-to-Speech (`speechSynthesis`).
-  - **Simulador de Automatizaciones n8n:** Disparo visual de flujos de webhook hacia Telegram, reserva de cámaras húmedas en el laboratorio de Terrassa y ERP de calidad.
-  - **Soporte Bilingüe Català / Castellano (`[CAT | ES]`):** Adaptación completa al contexto empresarial de Terrassa.
+  - **Conmutador de Modo Claro / Modo Oscuro:** Interfaz adaptable con variables semánticas CSS y contraste verificado (WCAG AA).
+  - **Canvas a Pantalla Completa (100% Width):** Eliminación de márgenes restrictivos, con tipografía amplia y legible sin cortes de texto en botones ni tarjetas.
+  - **Simulador de Automatizaciones n8n:** Disparo visual de flujos de webhook hacia Telegram, reserva de cámaras húmedas en el laboratorio central y ERP de calidad.
+  - **Soporte Bilingüe Català / Castellano (`[CAT | ES]`):** Terminología técnica rigurosa en ambos idiomas.
 - **Calidad de Código y Testing:**
   - 48 tests automatizados en Vitest pasando al 100% (40 unitarios de reglas de negocio + 8 de integración de Server Actions).
   - Cero errores en `npx tsc --noEmit` (TypeScript strict mode) y `npm run lint` (ESLint limpio).
@@ -46,28 +49,16 @@
 
 ## 3. Supuestos Asumidos
 
-- Se asume que las 4 obras de ejemplo y sus distancias en la Comunidad de Madrid o área metropolitana de Barcelona se rigen por un tiempo medio de traslado mínimo estandarizado de 30 minutos, representativo de la operativa de transporte de probetas.
+- Se asume que las 4 obras de ejemplo y sus distancias se rigen por un tiempo medio de traslado mínimo estandarizado de 30 minutos, representativo de la operativa de transporte de probetas.
 - Se asume que las visitas canceladas no deben borrarse físicamente de la base de datos (soft-state `CANCELLED`) para cumplir con los requerimientos de trazabilidad y auditoría de la norma ISO 9001.
-- Se asume que la jornada laboral de 08:00 a 17:00 aplica de lunes a viernes, permitiendo inspecciones en cualquier día laborable seleccionado en el calendario.
 
 ---
 
-## 4. Uso de la IA y Caso Concreto de Corrección de Error / Alucinación
+## 4. Prompts de Antigravity Utilizados y Registro de Subagentes
 
-Durante el desarrollo se emplearon modelos de lenguaje avanzados y agentes especializados de Antigravity, ECC y Anthropic Skills.
-
-### Caso Concreto de Corrección de Error / Alucinación:
-
-**1. Contexto y Error Generado por la IA:**  
-Al implementar la validación de la **Regla B** (tiempo de desplazamiento de 30 minutos entre obras distintas), el código generado inicialmente por la IA evaluaba únicamente la distancia temporal con la visita inmediatamente anterior (`immediatePrev`). Cuando se le pidió considerar la inserción de una visita en medio del día, la IA introdujo un chequeo de solapamiento condicional simple restando el fin de la visita anterior del inicio de la nueva, pero **alucinó en la condición de la visita posterior:** asumió que bastaba con comprobar que `nextVisit.startTime > newVisit.endTime`.
-
-**2. Impacto Crítico del Bug:**  
-Bajo esta lógica defectuosa generada por la IA, si un técnico tenía una visita programada a las 12:00 en la Obra B y se intentaba programar una visita intermedia en la Obra A de 10:00 a 11:45 (finalizando a solo 15 minutos del inicio de la siguiente), la validación lo daba por bueno porque `12:00 > 11:45`, **violando flagrantemente la Regla B** al dejar solo 15 minutos de traslado hacia la obra posterior.
-
-**3. Detección y Corrección Disciplinada:**  
-El subagente `qa-automation-engineer` detectó el fallo al ejecutar los casos de prueba de inserción asimétrica (`tests/validation.test.ts`). Se procedió a refactorizar el motor con un algoritmo matemático riguroso bidireccional:
-- Cálculo explícito de $\Delta_{\text{prev}} = S_{\text{new}} - E_{\text{prev}}$ con verificación de $\ge 30$ min si $\text{site}_{\text{prev}} \neq \text{site}_{\text{new}}$.
-- Cálculo explícito de $\Delta_{\text{next}} = S_{\text{next}} - E_{\text{new}}$ con verificación de $\ge 30$ min si $\text{site}_{\text{next}} \neq \text{site}_{\text{new}}$.
-- En caso de incumplimiento, se estructuró un reporte exacto del sentido infractor (`direction: 'PREVIOUS' | 'NEXT'`), los minutos reales disponibles y la obra en conflicto.
-
-Este caso demuestra la importancia crítica de contar con una suite de pruebas automatizadas con casos límite (off-by-one) para auditar y corregir el código asistido por IA.
+El desarrollo se coordinó mediante una arquitectura multi-agente en Antigravity:
+1. **Architect & Tech Lead:** Definición de contratos TypeScript, Zod y estructura modular.
+2. **Backend & Logic Engineer:** Implementación matemática de las Reglas A, B, C y Server Actions transaccionales.
+3. **QA & Automation Engineer:** 48 pruebas unitarias e integradas con Vitest cubriendo casos extremos y condiciones de contorno.
+4. **Frontend & Apple UI Designer:** Cronograma visual estilo Linear, conmutador de tema claro/oscuro, panel persistente de IA y microinteracciones táctiles.
+5. **DevOps Gatekeeper:** Verificación de tipos, linter, tests y automatización de despliegue en Vercel y GitHub.

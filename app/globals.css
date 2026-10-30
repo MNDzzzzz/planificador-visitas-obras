@@ -2,18 +2,43 @@
 
 @layer base {
   :root {
+    --bg-main: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f1f5f9;
+    --border-subtle: #e2e8f0;
+    --border-active: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --accent-blue: #0284c7;
+    --accent-green: #16a34a;
+    --accent-orange: #ea580c;
+    --accent-red: #dc2626;
+    --glass-header: rgba(255, 255, 255, 0.88);
+    --glass-card: #ffffff;
+    --glass-card-border: #e2e8f0;
+    --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.07);
+  }
+
+  html.dark {
     --bg-main: #0b0c0e;
-    --bg-card: rgba(255, 255, 255, 0.035);
-    --bg-card-hover: rgba(255, 255, 255, 0.06);
+    --bg-surface: #121418;
+    --bg-card: #14171d;
+    --bg-card-hover: #1c2027;
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-active: rgba(255, 255, 255, 0.2);
     --text-primary: #f5f5f7;
-    --text-secondary: #86868b;
-    --text-tertiary: #515154;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
     --accent-blue: #2997ff;
     --accent-green: #30d158;
     --accent-orange: #ff9f0a;
     --accent-red: #ff453a;
+    --glass-header: rgba(18, 20, 24, 0.85);
+    --glass-card: rgba(255, 255, 255, 0.035);
+    --glass-card-border: rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.45);
   }
 
   html {
@@ -28,12 +53,13 @@
 
   body {
     background-color: var(--bg-main);
+    color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
   }
 }
 
-/* Tipografía y Números Tabulares (Skill: make-interfaces-feel-better) */
+/* Tipografía y Números Tabulares */
 .tabular-numbers {
   font-variant-numeric: tabular-nums;
 }
@@ -49,45 +75,44 @@
   transform: scale(0.975);
 }
 
-/* Hit areas mínimas de accesibilidad Apple (44x44px) */
+/* Hit areas mínimas de accesibilidad Apple */
 .min-hit-area {
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 40px;
+  min-width: 40px;
 }
 
-/* Materiales Translúcidos Apple Glass */
+/* Materiales Translúcidos Apple Glass adaptativos */
 .apple-glass {
-  background: rgba(18, 20, 24, 0.78);
+  background: var(--glass-header);
   backdrop-filter: blur(24px) saturate(190%);
   -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
 }
 
 .apple-glass-card {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--glass-card);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--glass-card-border);
+  box-shadow: var(--card-shadow);
 }
 
 .apple-glass-card:hover {
-  background: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--border-active);
 }
 
 .apple-glass-subtle {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-card-hover);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
 }
 
-/* Fondo Modal Translúcido Apple */
+/* Fondo Modal Translúcido */
 .apple-modal-overlay {
-  background: rgba(0, 0, 0, 0.72);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }
 
 /* Scrollbar sutil y minimalista */
@@ -101,10 +126,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(148, 163, 184, 0.6);
 }

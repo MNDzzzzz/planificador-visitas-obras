@@ -1,5 +1,5 @@
 // Sistema de internacionalización bilingüe (Català / Castellano)
-// Adaptado para empresa de control de calidad de la construcción en Terrassa.
+// Prueba técnica: Planificador de Visitas a Obras
 
 export type Language = 'ca' | 'es';
 
@@ -7,7 +7,7 @@ export const translations = {
   ca: {
     // Header
     appTitle: 'Planificador de Visites a Obres',
-    appSubtitle: 'Control de qualitat i assajos de materials • Terrassa Lab',
+    appSubtitle: 'Control de qualitat i assajos de materials • Sede Tècnica',
     liveBadge: 'Jornada activa (Europe/Madrid)',
     scheduledCountLabel: 'actives',
     cancelledCountLabel: 'cancel·lades',
@@ -18,6 +18,8 @@ export const translations = {
     copilotBtn: 'LabQA Copilot IA',
     copilotVoiceBtn: 'Trucada amb IA',
     n8nBtn: 'Automatització n8n',
+    themeLight: 'Mode Clar',
+    themeDark: 'Mode Fosc',
 
     // Filtros
     filterAllTechs: 'Tots els tècnics',
@@ -77,11 +79,11 @@ export const translations = {
     copilotVoiceStop: 'Finalitzar Trucada',
 
     // n8n
-    n8nTitle: 'Flux d\'Automatització n8n — Lab Terrassa',
+    n8nTitle: 'Flux d\'Automatització n8n — Lab Qualitat',
     n8nSubtitle: 'Integració de webhooks per a notificacions i gestió de laboratoris',
     n8nTrigger: 'Trigger: Visita Agendada o Cancel·lada',
     n8nNode1: 'Notificació instantània per Telegram/WhatsApp al tècnic',
-    n8nNode2: 'Reserva de cambra humida per a provetes a Terrassa',
+    n8nNode2: 'Reserva de cambra humida per a provetes al laboratori',
     n8nNode3: 'Registre automàtic en ERP de Qualitat ISO 9001',
     n8nWebhookUrl: 'Webhook Endpoint (n8n Cloud / Self-hosted):',
     n8nSimulateBtn: 'Simular Execució del Webhook',
@@ -89,7 +91,7 @@ export const translations = {
   es: {
     // Header
     appTitle: 'Planificador de Visitas a Obras',
-    appSubtitle: 'Control de calidad y ensayos de materiales • Terrassa Lab',
+    appSubtitle: 'Control de calidad y ensayos de materiales • Sede Técnica',
     liveBadge: 'Jornada activa (Europe/Madrid)',
     scheduledCountLabel: 'activas',
     cancelledCountLabel: 'canceladas',
@@ -100,6 +102,8 @@ export const translations = {
     copilotBtn: 'LabQA Copilot IA',
     copilotVoiceBtn: 'Llamada con IA',
     n8nBtn: 'Automatización n8n',
+    themeLight: 'Modo Claro',
+    themeDark: 'Modo Oscuro',
 
     // Filtros
     filterAllTechs: 'Todos los técnicos',
@@ -159,11 +163,11 @@ export const translations = {
     copilotVoiceStop: 'Finalizar Llamada',
 
     // n8n
-    n8nTitle: 'Flujo de Automatización n8n — Lab Terrassa',
+    n8nTitle: 'Flujo de Automatización n8n — Lab Calidad',
     n8nSubtitle: 'Integración de webhooks para notificaciones y gestión de laboratorio',
     n8nTrigger: 'Trigger: Visita Agendada o Cancelada',
     n8nNode1: 'Notificación instantánea por Telegram/WhatsApp al técnico',
-    n8nNode2: 'Reserva de cámara húmeda para probetas en Terrassa',
+    n8nNode2: 'Reserva de cámara húmeda para probetas en laboratorio',
     n8nNode3: 'Registro automático en ERP de Calidad ISO 9001',
     n8nWebhookUrl: 'Webhook Endpoint (n8n Cloud / Self-hosted):',
     n8nSimulateBtn: 'Simular Ejecución del Webhook',

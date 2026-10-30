@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   CreateVisitInput,
   SiteDTO,
@@ -13,7 +13,7 @@ import { FilterBar } from './FilterBar';
 import { VisitsList } from './VisitsList';
 import { TimelineView } from './TimelineView';
 import { ScheduleModal } from './ScheduleModal';
-import { CopilotDrawer } from './CopilotDrawer';
+import { CopilotPanel } from './CopilotPanel';
 import { N8NModal } from './N8NModal';
 import { ShieldCheck, Clock, MapPin, CheckCircle, Info, Zap } from 'lucide-react';
 import { Language, translations } from '../lib/i18n/translations';
@@ -31,10 +31,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
   const [sites] = useState<SiteDTO[]>(initialData.sites);
   const [visits, setVisits] = useState<VisitDTO[]>(initialData.visits);
 
-  // Estados de vista e idioma
-  const [language, setLanguage] = useState<Language>('ca'); // Por defecto Català para empresa de Terrassa
-  const [currentView, setCurrentView] = useState<'timeline' | 'cards'>('timeline'); // Cronograma por defecto
+  // Estados de vista, idioma y tema
+  const [language, setLanguage] = useState<Language>('es');
+  const [currentView, setCurrentView] = useState<'timeline' | 'cards'>('timeline');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const t = translations[language];
+
+  // Sincronizar tema con la clase html
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   // Estados de filtros
   const todayStr = new Date().toISOString().split('T')[0];
@@ -45,7 +62,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
 
   // Modales interactivos
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isN8nOpen, setIsN8nOpen] = useState(false);
   const [latestVisitForN8n, setLatestVisitForN8n] = useState<VisitDTO | null>(null);
   const [toastMessage, setToastMessage] = useState<{
@@ -101,7 +117,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
     try {
       const result = await cancelVisitAction(visitId);
       if (!result.success) {
-        // Rollback en caso de fallo
         setVisits(previousVisits);
         alert(result.error || 'Error al cancelar la visita.');
       } else {
@@ -134,31 +149,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
     // Toast informativo con simulación de n8n
     setToastMessage({
       text: language === 'ca'
-        ? 'Visita agendada amb èxit. Disparat webhook n8n ➔ Notificat tècnic i reservat laboratori Terrassa.'
-        : 'Visita agendada con éxito. Disparado webhook n8n ➔ Notificado técnico y reservado laboratorio Terrassa.',
+        ? 'Visita agendada amb èxit. Disparat webhook n8n ➔ Notificat tècnic i reservat laboratori.'
+        : 'Visita agendada con éxito. Disparado webhook n8n ➔ Notificado técnico y reservado laboratorio.',
       type: 'n8n',
     });
     setTimeout(() => setToastMessage(null), 5000);
   };
 
   return (
-    <div className="min-h-screen bg-[#090A0C] text-[#F5F5F7] flex flex-col antialiased selection:bg-[#2997FF]/30 selection:text-white">
-      {/* Toast Notification Flotante (Emil Kowalski Toast Pattern) */}
+    <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex flex-col antialiased transition-colors duration-200">
+      {/* Toast Notification Flotante */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 transition-all duration-200 transform translate-y-0 opacity-100">
           <div
-            className={`px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-2xl text-xs sm:text-sm font-medium ${
+            className={`px-4 py-3 rounded-2xl shadow-2xl border flex items-center gap-3 backdrop-blur-2xl text-xs sm:text-sm font-semibold ${
               toastMessage.type === 'n8n'
-                ? 'bg-gradient-to-r from-[#EA580C]/25 to-black/80 border-[#EA580C]/40 text-orange-200'
+                ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 border-orange-500/40 text-orange-600 dark:text-orange-200'
                 : toastMessage.type === 'success'
-                ? 'bg-[#30D158]/15 border-[#30D158]/30 text-[#30D158]'
-                : 'bg-white/10 border-white/15 text-[#F5F5F7]'
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-primary)]'
             }`}
           >
             {toastMessage.type === 'n8n' ? (
-              <Zap className="w-4 h-4 text-orange-400 shrink-0" />
+              <Zap className="w-4 h-4 text-orange-500 shrink-0" />
             ) : toastMessage.type === 'success' ? (
-              <CheckCircle className="w-4 h-4 text-[#30D158] shrink-0" />
+              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
             ) : (
               <Info className="w-4 h-4 text-[#2997FF] shrink-0" />
             )}
@@ -167,7 +182,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
         </div>
       )}
 
-      {/* Header Estilo Apple */}
+      {/* Header Estilo Apple con Selector de Tema */}
       <Header
         scheduledCount={scheduledCount}
         cancelledCount={cancelledCount}
@@ -176,78 +191,91 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
         onViewChange={setCurrentView}
         language={language}
         onLanguageChange={setLanguage}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
-        onOpenCopilot={() => setIsCopilotOpen(true)}
         onOpenN8n={() => setIsN8nOpen(true)}
       />
 
-      {/* Main Content Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Banner Informativo de Reglas y Calidad */}
-        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#2997FF]/15 border border-[#2997FF]/25 flex items-center justify-center text-[#2997FF] shrink-0">
-              <ShieldCheck className="w-4 h-4" />
+      {/* Main Content: Full-Width 100% Canvas con Grid Dividido (8 cols / 4 cols) */}
+      <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 xl:px-10 py-5">
+        <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          
+          {/* Columna Principal Izquierda (8 de 12 en desktop): Reglas, Filtros y Visitas */}
+          <div className="xl:col-span-8 space-y-6">
+            {/* Banner Informativo de Reglas y Calidad */}
+            <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#2997FF]/15 border border-[#2997FF]/25 flex items-center justify-center text-[#2997FF] shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-[var(--text-primary)]">{t.ruleATitle}</p>
+                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleADesc}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-500 shrink-0">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-[var(--text-primary)]">{t.ruleBTitle}</p>
+                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleBDesc}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#30D158]/15 border border-[#30D158]/25 flex items-center justify-center text-[#30D158] shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-bold text-[var(--text-primary)]">{t.ruleCTitle}</p>
+                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleCDesc}</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="font-semibold text-[#F5F5F7]">{t.ruleATitle}</p>
-              <p className="text-[#86868B] mt-0.5 leading-relaxed">{t.ruleADesc}</p>
-            </div>
+
+            {/* Barra de Filtros Segmentada */}
+            <FilterBar
+              technicians={technicians}
+              selectedTechId={selectedTechId}
+              onSelectTechId={setSelectedTechId}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              selectedStatus={selectedStatus}
+              onSelectStatus={setSelectedStatus}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              totalResultsCount={filteredVisits.length}
+              onResetFilters={handleResetFilters}
+            />
+
+            {/* Vista Condicional: Cronograma Visual o Lista de Tarjetas */}
+            {currentView === 'timeline' ? (
+              <TimelineView
+                technicians={technicians}
+                sites={sites}
+                visits={visits}
+                selectedDate={selectedDate || todayStr}
+                language={language}
+                onCancelVisit={handleCancelVisit}
+              />
+            ) : (
+              <VisitsList
+                visits={filteredVisits}
+                onCancelVisit={handleCancelVisit}
+                onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
+              />
+            )}
           </div>
 
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#F59E0B]/15 border border-[#F59E0B]/25 flex items-center justify-center text-[#F59E0B] shrink-0">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-semibold text-[#F5F5F7]">{t.ruleBTitle}</p>
-              <p className="text-[#86868B] mt-0.5 leading-relaxed">{t.ruleBDesc}</p>
-            </div>
+          {/* Columna Derecha Fija (4 de 12 en desktop): Panel Persistente Copilot IA RAG */}
+          <div className="xl:col-span-4 xl:sticky xl:top-20">
+            <CopilotPanel language={language} />
           </div>
 
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#30D158]/15 border border-[#30D158]/25 flex items-center justify-center text-[#30D158] shrink-0">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="font-semibold text-[#F5F5F7]">{t.ruleCTitle}</p>
-              <p className="text-[#86868B] mt-0.5 leading-relaxed">{t.ruleCDesc}</p>
-            </div>
-          </div>
         </div>
-
-        {/* Barra de Filtros Segmentada */}
-        <FilterBar
-          technicians={technicians}
-          selectedTechId={selectedTechId}
-          onSelectTechId={setSelectedTechId}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          selectedStatus={selectedStatus}
-          onSelectStatus={setSelectedStatus}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          totalResultsCount={filteredVisits.length}
-          onResetFilters={handleResetFilters}
-        />
-
-        {/* Vista Condicional: Cronograma Visual (Linear Style) o Lista de Tarjetas */}
-        {currentView === 'timeline' ? (
-          <TimelineView
-            technicians={technicians}
-            sites={sites}
-            visits={visits}
-            selectedDate={selectedDate || todayStr}
-            language={language}
-            onCancelVisit={handleCancelVisit}
-          />
-        ) : (
-          <VisitsList
-            visits={filteredVisits}
-            onCancelVisit={handleCancelVisit}
-            onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
-          />
-        )}
       </main>
 
       {/* Modal Sheet "Programar Visita" */}
@@ -265,13 +293,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
           return res;
         }}
         defaultDate={selectedDate || todayStr}
-      />
-
-      {/* Drawer LabQA Copilot (RAG + Llamada con IA) */}
-      <CopilotDrawer
-        isOpen={isCopilotOpen}
-        onClose={() => setIsCopilotOpen(false)}
-        language={language}
       />
 
       {/* Modal Simulador n8n */}

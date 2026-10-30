@@ -36,51 +36,51 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const hasActiveFilters = selectedTechId !== '' || selectedDate !== '' || selectedStatus !== 'ALL' || searchQuery.trim() !== '';
 
   return (
-    <div className="w-full apple-glass-subtle rounded-2xl p-3 sm:p-4 border border-white/[0.08] shadow-lg mb-6 backdrop-blur-xl">
+    <div className="w-full bg-[var(--bg-card)] rounded-2xl p-3.5 sm:p-4 border border-[var(--border-subtle)] shadow-sm backdrop-blur-xl">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
         
         {/* Fila 1: Filtro de Técnico y Búsqueda */}
         <div className="flex flex-col sm:flex-row items-center gap-2.5 flex-1">
           {/* Selector de Técnico */}
-          <div className="relative w-full sm:w-auto sm:min-w-[220px]">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#86868B]">
+          <div className="relative w-full sm:w-auto sm:min-w-[230px]">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-secondary)]">
               <User className="w-4 h-4" />
             </div>
             <select
               value={selectedTechId}
               onChange={(e) => onSelectTechId(e.target.value)}
-              className="w-full min-hit-area pl-9 pr-8 py-2.5 bg-white/[0.04] hover:bg-white/[0.07] focus:bg-white/[0.08] border border-white/[0.1] rounded-xl text-xs sm:text-sm text-[#F5F5F7] appearance-none outline-none focus:border-[#2997FF] transition-colors cursor-pointer"
+              className="w-full min-hit-area pl-9 pr-8 py-2.5 bg-[var(--bg-card-hover)] hover:border-[#2997FF]/50 focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] appearance-none outline-none focus:border-[#2997FF] transition-colors cursor-pointer"
             >
-              <option value="" className="bg-[#121418] text-[#F5F5F7]">
+              <option value="" className="bg-[var(--bg-card)] text-[var(--text-primary)]">
                 Todos los técnicos ({technicians.length})
               </option>
               {technicians.map((t) => (
-                <option key={t.id} value={t.id} className="bg-[#121418] text-[#F5F5F7]">
+                <option key={t.id} value={t.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
                   {t.name} — {t.specialty.split(' ')[0]}
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#86868B]">
+            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[var(--text-secondary)]">
               <Filter className="w-3.5 h-3.5" />
             </div>
           </div>
 
           {/* Búsqueda por obra o municipio */}
           <div className="relative w-full sm:flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#86868B]">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-secondary)]">
               <Search className="w-4 h-4" />
             </div>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Buscar obra, municipio o notas..."
-              className="w-full min-hit-area pl-9 pr-4 py-2.5 bg-white/[0.04] hover:bg-white/[0.07] focus:bg-white/[0.08] border border-white/[0.1] rounded-xl text-xs sm:text-sm text-[#F5F5F7] placeholder-[#86868B] outline-none focus:border-[#2997FF] transition-colors"
+              placeholder="Buscar obra, municipio o notas técnicas..."
+              className="w-full min-hit-area pl-9 pr-4 py-2.5 bg-[var(--bg-card-hover)] focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[#2997FF] transition-colors"
             />
             {searchQuery && (
               <button
                 onClick={() => onSearchChange('')}
-                className="apple-press absolute inset-y-0 right-0 pr-3 flex items-center text-[#86868B] hover:text-[#F5F5F7] cursor-pointer"
+                className="apple-press absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                 title="Limpiar búsqueda"
               >
                 <X className="w-4 h-4" />
@@ -93,31 +93,31 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         <div className="flex flex-wrap items-center gap-2.5 justify-between lg:justify-end">
           
           {/* Selector de Fecha */}
-          <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.1] rounded-xl p-1">
+          <div className="flex items-center gap-1.5 bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-xl p-1">
             <button
               onClick={() => onSelectDate(isToday ? '' : todayStr)}
               className={`apple-press px-2.5 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
                 isToday
-                  ? 'bg-[#2997FF] text-white shadow-sm'
-                  : 'text-[#86868B] hover:text-[#F5F5F7]'
+                  ? 'bg-[#2997FF] text-white shadow-sm font-semibold'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Hoy
             </button>
             <div className="relative flex items-center">
-              <Calendar className="w-3.5 h-3.5 absolute left-2 text-[#86868B] pointer-events-none" />
+              <Calendar className="w-3.5 h-3.5 absolute left-2 text-[var(--text-secondary)] pointer-events-none" />
               <input
                 type="date"
                 value={selectedDate}
                 onChange={(e) => onSelectDate(e.target.value)}
-                className="pl-7 pr-2 py-1 bg-transparent text-xs text-[#F5F5F7] outline-none cursor-pointer scheme-dark"
+                className="pl-7 pr-2 py-1 bg-transparent text-xs text-[var(--text-primary)] outline-none cursor-pointer"
                 title="Filtrar por fecha específica"
               />
             </div>
             {selectedDate && (
               <button
                 onClick={() => onSelectDate('')}
-                className="apple-press p-1 text-[#86868B] hover:text-[#F5F5F7] rounded cursor-pointer"
+                className="apple-press p-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded cursor-pointer"
                 title="Ver todas las fechas"
               >
                 <X className="w-3.5 h-3.5" />
@@ -125,8 +125,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             )}
           </div>
 
-          {/* Segmented Control Concéntrico: outer rounded-xl (12px) = inner rounded-lg (8px) + padding (4px) */}
-          <div className="flex items-center bg-white/[0.04] border border-white/[0.1] rounded-xl p-1 select-none">
+          {/* Segmented Control de Estado */}
+          <div className="flex items-center bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-xl p-1 select-none">
             {(
               [
                 { id: 'ALL', label: 'Todas' },
@@ -141,8 +141,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                   onClick={() => onSelectStatus(tab.id)}
                   className={`apple-press min-hit-area px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center justify-center ${
                     active
-                      ? 'bg-white/10 text-[#F5F5F7] shadow-sm font-semibold'
-                      : 'text-[#86868B] hover:text-[#F5F5F7]'
+                      ? 'bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-semibold'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {tab.label}
@@ -151,15 +151,15 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             })}
           </div>
 
-          {/* Botón Reset / Conteo de resultados */}
+          {/* Conteo de resultados y botón Restablecer */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#86868B] px-2 py-1 tabular-numbers">
+            <span className="text-xs text-[var(--text-secondary)] px-2 py-1 tabular-numbers font-medium">
               {totalResultsCount} {totalResultsCount === 1 ? 'visita' : 'visitas'}
             </span>
             {hasActiveFilters && (
               <button
                 onClick={onResetFilters}
-                className="apple-press min-hit-area inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs text-[#86868B] hover:text-[#F5F5F7] border border-white/[0.08] cursor-pointer"
+                className="apple-press min-hit-area inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[var(--bg-card-hover)] hover:bg-[var(--bg-card)] text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] cursor-pointer"
                 title="Restablecer todos los filtros"
               >
                 <X className="w-3.5 h-3.5" />
