@@ -62,8 +62,14 @@ export async function POST(req: NextRequest) {
   let isCatalan = false;
 
   try {
-    const body = await req.json();
-    const { query, language = 'es' } = body;
+    let body: Record<string, unknown> = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+    const query = typeof body.query === 'string' ? body.query : '';
+    const language: 'es' | 'ca' = body.language === 'ca' ? 'ca' : 'es';
 
     if (!query || typeof query !== 'string' || !query.trim()) {
       return new Response(JSON.stringify({ error: 'La consulta no puede estar vacía.' }), {
