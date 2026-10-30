@@ -6,7 +6,6 @@ import {
   Clock,
   MapPin,
   Calendar,
-  AlertCircle,
   XCircle,
   CheckCircle2,
   HardHat,
@@ -15,12 +14,14 @@ import {
   Building2,
   CalendarPlus,
 } from 'lucide-react';
+import { Language, translations } from '../lib/i18n/translations';
 
 interface VisitsListProps {
   visits: VisitDTO[];
   onCancelVisit: (visitId: string) => Promise<void>;
   onOpenScheduleModal: () => void;
   cancellingId?: string | null;
+  language: Language;
 }
 
 export const VisitsList: React.FC<VisitsListProps> = ({
@@ -28,7 +29,10 @@ export const VisitsList: React.FC<VisitsListProps> = ({
   onCancelVisit,
   onOpenScheduleModal,
   cancellingId,
+  language,
 }) => {
+  const t = translations[language];
+
   if (visits.length === 0) {
     return (
       <div className="w-full bg-[var(--bg-card)] rounded-3xl p-8 sm:p-12 text-center border border-[var(--border-subtle)] my-6 flex flex-col items-center justify-center shadow-sm">
@@ -36,17 +40,17 @@ export const VisitsList: React.FC<VisitsListProps> = ({
           <CalendarPlus className="w-8 h-8 text-[#2997FF]" />
         </div>
         <h3 className="text-lg font-bold tracking-tight text-[var(--text-primary)] mb-2">
-          No hay visitas para mostrar
+          {t.noVisitsTitle}
         </h3>
         <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 leading-relaxed">
-          No se encontraron visitas que coincidan con los filtros seleccionados o aún no hay actividades agendadas en esta fecha.
+          {t.noVisitsDesc}
         </p>
         <button
           onClick={onOpenScheduleModal}
-          className="apple-press min-hit-area inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2997FF] hover:bg-[#0077ED] text-white text-sm font-medium shadow-[0_2px_14px_rgba(41,151,255,0.35)] cursor-pointer"
+          className="apple-press min-hit-area inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2997FF] hover:bg-[#0077ED] text-white text-sm font-semibold shadow-[0_2px_14px_rgba(41,151,255,0.35)] cursor-pointer"
         >
           <CalendarPlus className="w-4 h-4" />
-          <span>Programar Nueva Visita</span>
+          <span>{t.newVisitBtn}</span>
         </button>
       </div>
     );
@@ -82,10 +86,14 @@ export const VisitsList: React.FC<VisitsListProps> = ({
             <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 mb-2">
               <ArrowRight className="w-3.5 h-3.5 text-[#2997FF]" />
               {isSameSite ? (
-                <span>Misma obra consecutiva (0 min traslado requerido)</span>
+                <span>{t.travelSameSite}</span>
               ) : (
                 <span>
-                  Margen con obra anterior: <strong className="tabular-numbers text-[var(--text-primary)] font-semibold">{gapMinutes} min</strong> (traslado mín. 30 min cumplido)
+                  {t.travelMarginOk}{' '}
+                  <strong className="tabular-numbers text-[var(--text-primary)] font-semibold">
+                    {gapMinutes} min
+                  </strong>{' '}
+                  ({t.travelRequired})
                 </span>
               )}
             </div>
@@ -143,15 +151,15 @@ export const VisitsList: React.FC<VisitsListProps> = ({
                     </div>
 
                     {/* Nombre de la Obra y Municipio */}
-                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] flex-wrap">
-                      <Building2 className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" />
+                    <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                      <Building2 className="w-3.5 h-3.5 text-[#2997FF] shrink-0" />
                       <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
-                        {visit.site?.name || 'Obra no especificada'}
+                        {visit.site?.name || 'Obra'}
                       </span>
                       <span className="text-xs text-[var(--text-secondary)]">•</span>
                       <div className="flex items-center gap-1 text-[var(--text-secondary)] truncate">
                         <MapPin className="w-3 h-3 shrink-0 text-[#2997FF]" />
-                        <span className="truncate">{visit.site?.municipality || 'Sede'}</span>
+                        <span className="truncate">{visit.site?.municipality || 'Madrid'}</span>
                       </div>
                     </div>
 
@@ -179,24 +187,24 @@ export const VisitsList: React.FC<VisitsListProps> = ({
                   {isCancelled ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-[var(--text-secondary)] border border-[var(--border-subtle)] select-none">
                       <XCircle className="w-3.5 h-3.5" />
-                      <span>Cancelada</span>
+                      <span>{t.visitStatusCancelled}</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#30D158]/10 text-[#30D158] border border-[#30D158]/25 select-none">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 select-none">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Programada</span>
+                      <span>{t.visitStatusScheduled}</span>
                     </span>
                   )}
 
-                  {/* Botón de Cancelar Visita (libera horario) */}
+                  {/* Botón de Cancelar Visita */}
                   {!isCancelled && (
                     <button
                       onClick={() => onCancelVisit(visit.id)}
                       disabled={isCancelling}
-                      className="apple-press min-hit-area inline-flex items-center justify-center px-3 py-1.5 rounded-xl text-xs font-medium text-rose-500 hover:bg-rose-500/10 border border-rose-500/25 cursor-pointer disabled:opacity-50 transition-colors"
-                      title="Cancelar visita y liberar de inmediato el tramo horario del técnico"
+                      className="apple-press min-hit-area inline-flex items-center justify-center px-3.5 py-1.5 rounded-xl text-xs font-semibold text-rose-500 hover:bg-rose-500/10 border border-rose-500/25 cursor-pointer disabled:opacity-50 transition-colors"
+                      title={t.cancelConfirmPrompt}
                     >
-                      {isCancelling ? 'Cancelando...' : 'Cancelar'}
+                      {isCancelling ? '...' : t.cancelActionBtn}
                     </button>
                   )}
                 </div>

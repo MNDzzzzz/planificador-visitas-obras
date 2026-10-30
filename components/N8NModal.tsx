@@ -75,7 +75,7 @@ export const N8NModal: React.FC<N8NModalProps> = ({
       site: {
         id: latestVisit?.siteId || 'site-sample',
         name: latestVisit?.site?.name || 'Residencial Monte Rozas',
-        municipality: latestVisit?.site?.municipality || 'Sede Central',
+        municipality: latestVisit?.site?.municipality || 'Madrid',
       },
       labReservations: {
         facility: 'Laboratori Central (Plaça de la Innovació 4)',
@@ -105,13 +105,7 @@ export const N8NModal: React.FC<N8NModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity"
-      />
-
+    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 apple-modal-overlay">
       {/* Modal Dialog */}
       <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl shadow-2xl p-6 z-10 space-y-6">
         {/* Header */}
@@ -144,7 +138,7 @@ export const N8NModal: React.FC<N8NModalProps> = ({
         {/* Visual Workflow Steps (n8n Nodes) */}
         <div className="space-y-3">
           <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-            Flux de Nodes Automatitzats
+            {t.n8nWorkflowTitle}
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
@@ -161,8 +155,8 @@ export const N8NModal: React.FC<N8NModalProps> = ({
                 {activeStep >= 1 && <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />}
               </div>
               <div>
-                <p className="font-bold text-[11px] text-[var(--text-primary)]">1. Webhook</p>
-                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Disparador de Visita</p>
+                <p className="font-bold text-[11px] text-[var(--text-primary)]">{t.n8nNode1Name}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t.n8nNode1Desc}</p>
               </div>
             </div>
 
@@ -179,8 +173,8 @@ export const N8NModal: React.FC<N8NModalProps> = ({
                 {activeStep >= 2 && <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />}
               </div>
               <div>
-                <p className="font-bold text-[11px] text-[var(--text-primary)]">2. Telegram</p>
-                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Avís Tècnic de Camp</p>
+                <p className="font-bold text-[11px] text-[var(--text-primary)]">{t.n8nNode2Name}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t.n8nNode2Desc}</p>
               </div>
             </div>
 
@@ -197,8 +191,8 @@ export const N8NModal: React.FC<N8NModalProps> = ({
                 {activeStep >= 3 && <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />}
               </div>
               <div>
-                <p className="font-bold text-[11px] text-[var(--text-primary)]">3. Lab Central</p>
-                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Reserva Càmera Provetes</p>
+                <p className="font-bold text-[11px] text-[var(--text-primary)]">{t.n8nNode3Name}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t.n8nNode3Desc}</p>
               </div>
             </div>
 
@@ -215,8 +209,8 @@ export const N8NModal: React.FC<N8NModalProps> = ({
                 {activeStep >= 4 && <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />}
               </div>
               <div>
-                <p className="font-bold text-[11px] text-[var(--text-primary)]">4. ERP ISO 9001</p>
-                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">Traçabilitat i Acta</p>
+                <p className="font-bold text-[11px] text-[var(--text-primary)]">{t.n8nNode4Name}</p>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t.n8nNode4Desc}</p>
               </div>
             </div>
           </div>
@@ -240,14 +234,14 @@ export const N8NModal: React.FC<N8NModalProps> = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-              Payload JSON Transmès al Webhook
+              {t.n8nPayloadTitle}
             </span>
             <button
               onClick={handleCopy}
               className="text-xs text-[#2997FF] hover:text-[#0077ED] flex items-center gap-1 transition-colors cursor-pointer"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-[#30D158]" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copiat!' : 'Copiar JSON'}</span>
+              <span>{copied ? t.n8nCopySuccess : t.n8nCopyBtn}</span>
             </button>
           </div>
 
@@ -271,7 +265,7 @@ export const N8NModal: React.FC<N8NModalProps> = ({
             className="apple-press inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-semibold shadow-md disabled:opacity-50 cursor-pointer"
           >
             <Play className={`w-3.5 h-3.5 ${simulating ? 'animate-spin' : ''}`} />
-            <span>{simulating ? 'Executant Workflow n8n...' : t.n8nSimulateBtn}</span>
+            <span>{simulating ? t.n8nSimulating : t.n8nSimulateBtn}</span>
           </button>
         </div>
       </div>

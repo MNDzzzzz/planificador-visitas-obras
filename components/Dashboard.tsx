@@ -15,7 +15,7 @@ import { TimelineView } from './TimelineView';
 import { ScheduleModal } from './ScheduleModal';
 import { CopilotPanel } from './CopilotPanel';
 import { N8NModal } from './N8NModal';
-import { ShieldCheck, Clock, MapPin, CheckCircle, Info, Zap } from 'lucide-react';
+import { CheckCircle, Info, Zap } from 'lucide-react';
 import { Language, translations } from '../lib/i18n/translations';
 
 interface DashboardProps {
@@ -201,41 +201,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
       <main className="w-full flex-1 px-4 sm:px-6 lg:px-8 xl:px-10 py-5">
         <div className="w-full grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           
-          {/* Columna Principal Izquierda (8 de 12 en desktop): Reglas, Filtros y Visitas */}
+          {/* Columna Principal Izquierda (8 de 12 en desktop): Filtros y Visitas */}
           <div className="xl:col-span-8 space-y-6">
-            {/* Banner Informativo de Reglas y Calidad */}
-            <div className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#2997FF]/15 border border-[#2997FF]/25 flex items-center justify-center text-[#2997FF] shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-[var(--text-primary)]">{t.ruleATitle}</p>
-                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleADesc}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-500 shrink-0">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-[var(--text-primary)]">{t.ruleBTitle}</p>
-                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleBDesc}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#30D158]/15 border border-[#30D158]/25 flex items-center justify-center text-[#30D158] shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="font-bold text-[var(--text-primary)]">{t.ruleCTitle}</p>
-                  <p className="text-[var(--text-secondary)] mt-0.5 leading-relaxed">{t.ruleCDesc}</p>
-                </div>
-              </div>
-            </div>
-
             {/* Barra de Filtros Segmentada */}
             <FilterBar
               technicians={technicians}
@@ -249,6 +216,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
               onSearchChange={setSearchQuery}
               totalResultsCount={filteredVisits.length}
               onResetFilters={handleResetFilters}
+              language={language}
             />
 
             {/* Vista Condicional: Cronograma Visual o Lista de Tarjetas */}
@@ -266,6 +234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
                 visits={filteredVisits}
                 onCancelVisit={handleCancelVisit}
                 onOpenScheduleModal={() => setIsScheduleModalOpen(true)}
+                language={language}
               />
             )}
           </div>
@@ -293,6 +262,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ initialData }) => {
           return res;
         }}
         defaultDate={selectedDate || todayStr}
+        language={language}
       />
 
       {/* Modal Simulador n8n */}

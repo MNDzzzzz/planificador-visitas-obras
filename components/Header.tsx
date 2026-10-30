@@ -4,9 +4,7 @@ import React from 'react';
 import {
   Plus,
   HardHat,
-  Sparkles,
   Zap,
-  Phone,
   LayoutGrid,
   CalendarRange,
   Sun,

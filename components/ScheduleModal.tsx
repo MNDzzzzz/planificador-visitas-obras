@@ -21,13 +21,12 @@ import {
   Clock,
   HardHat,
   Building2,
-  AlertTriangle,
-  Info,
   CheckCircle,
   FileText,
   ShieldAlert,
   ArrowRight,
 } from 'lucide-react';
+import { Language, translations } from '../lib/i18n/translations';
 
 interface ScheduleModalProps {
   isOpen: boolean;
@@ -38,6 +37,7 @@ interface ScheduleModalProps {
   onSubmit: (input: CreateVisitInput) => Promise<ActionResult<VisitDTO>>;
   defaultTechnicianId?: string;
   defaultDate?: string;
+  language: Language;
 }
 
 export const ScheduleModal: React.FC<ScheduleModalProps> = ({
@@ -49,7 +49,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
   onSubmit,
   defaultTechnicianId,
   defaultDate,
+  language,
 }) => {
+  const t = translations[language];
   const todayStr = new Date().toISOString().split('T')[0];
 
   const [technicianId, setTechnicianId] = useState(defaultTechnicianId || (technicians[0]?.id ?? ''));
@@ -157,7 +159,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             details: res.details as ValidationFailure['details'],
           });
         }
-      } catch (err) {
+      } catch {
         setServerError({
           message: 'Error de comunicación con el servidor.',
         });
@@ -165,33 +167,34 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     });
   };
 
-  const getRuleBadge = (rule?: 'RULE_A' | 'RULE_B' | 'RULE_C') => {
+  // Badges corporativos limpios sin mención de "Regla A/B/C"
+  const getCorporateRuleBadge = (rule?: 'RULE_A' | 'RULE_B' | 'RULE_C') => {
     switch (rule) {
       case 'RULE_A':
         return {
-          title: 'REGLA A • SIN SOLAPAMIENTOS',
+          title: t.validationOverlapBadge,
           color: 'bg-rose-500/15 text-rose-500 border-rose-500/30',
         };
       case 'RULE_B':
         return {
-          title: 'REGLA B • TRASLADO MÍNIMO 30 MIN',
+          title: t.validationTravelBadge,
           color: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
         };
       case 'RULE_C':
         return {
-          title: 'REGLA C • JORNADA LABORAL 08:00–17:00',
+          title: t.validationWorkdayBadge,
           color: 'bg-rose-500/15 text-rose-500 border-rose-500/30',
         };
       default:
         return {
-          title: 'VALIDACIÓN TÉCNICA INCUMPLIDA',
+          title: t.validationGeneralBadge,
           color: 'bg-rose-500/15 text-rose-500 border-rose-500/30',
         };
     }
   };
 
-  const selectedTech = technicians.find((t) => t.id === technicianId);
-  const selectedSite = sites.find((s) => s.id === siteId);
+  const selectedTech = technicians.find((tech) => tech.id === technicianId);
+  const selectedSite = sites.find((site) => site.id === siteId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto apple-modal-overlay">
@@ -205,10 +208,10 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
-                Programar Inspección Técnica
+                {t.modalTitle}
               </h2>
               <p className="text-xs text-[var(--text-secondary)]">
-                Comprobación en vivo de solapamientos y tiempo de traslado
+                {t.modalSubtitle}
               </p>
             </div>
           </div>
@@ -216,7 +219,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           <button
             onClick={onClose}
             className="apple-press min-hit-area w-9 h-9 rounded-xl bg-[var(--bg-card)] hover:bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-            title="Cerrar modal"
+            title={t.cancelBtn}
           >
             <X className="w-4 h-4" />
           </button>
@@ -225,15 +228,15 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
-          {/* BANNER DE ERROR CON VISUALIZACIÓN DE LA REGLA EXACTA */}
+          {/* BANNER DE VALIDACIÓN CORPORATIVO LIMPIO */}
           {activeError && (
             <div className="rounded-2xl p-4 bg-rose-500/10 border border-rose-500/30 shadow-inner space-y-2 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between gap-2">
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border tracking-wider uppercase ${getRuleBadge(activeError.rule).color}`}>
-                  <ShieldAlert className="w-3 h-3" />
-                  {getRuleBadge(activeError.rule).title}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border tracking-wider uppercase ${getCorporateRuleBadge(activeError.rule).color}`}>
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  {getCorporateRuleBadge(activeError.rule).title}
                 </span>
-                <span className="text-[11px] text-rose-500 font-semibold">Bloqueo de Seguridad</span>
+                <span className="text-[11px] text-rose-500 font-semibold">{t.validationSecurityLock}</span>
               </div>
               <p className="text-xs sm:text-sm text-[var(--text-primary)] leading-relaxed font-medium">
                 {activeError.message}
@@ -242,21 +245,21 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 <div className="text-[11px] text-[var(--text-secondary)] bg-[var(--bg-card-hover)] rounded-xl p-2.5 border border-[var(--border-subtle)] space-y-1">
                   {activeError.details.conflictingSiteName && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[var(--text-secondary)]">Obra en conflicto:</span>
+                      <span className="text-[var(--text-secondary)]">{t.conflictingSiteLabel}</span>
                       <strong className="text-[var(--text-primary)]">{activeError.details.conflictingSiteName}</strong>
                     </div>
                   )}
                   {activeError.details.conflictingInterval && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[var(--text-secondary)]">Tramo ocupado:</span>
+                      <span className="text-[var(--text-secondary)]">{t.conflictingIntervalLabel}</span>
                       <strong className="text-[var(--text-primary)] tabular-numbers">{activeError.details.conflictingInterval}</strong>
                     </div>
                   )}
                   {activeError.details.actualGapMinutes !== undefined && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[var(--text-secondary)]">Tiempo de traslado actual:</span>
-                      <span className="text-rose-500 font-bold tabular-numbers">{activeError.details.actualGapMinutes} min</span>
-                      <span className="text-[var(--text-tertiary)]">/ requerido: mín. {activeError.details.requiredGapMinutes} min</span>
+                      <span className="text-[var(--text-secondary)]">{t.conflictingGapLabel}</span>
+                      <span className="text-rose-500 font-semibold tabular-numbers">{activeError.details.actualGapMinutes} min</span>
+                      <span className="text-[var(--text-tertiary)]">/ {t.conflictingRequiredGapLabel} {activeError.details.requiredGapMinutes} min</span>
                     </div>
                   )}
                 </div>
@@ -267,9 +270,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           {/* Selector de Técnico */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
-              <span>Técnico Responsable</span>
+              <span>{t.fieldTechnician}</span>
               {selectedTech && (
-                <span className="text-[11px] text-[#2997FF] font-medium">{selectedTech.specialty}</span>
+                <span className="text-[11px] text-[#2997FF]">{selectedTech.specialty}</span>
               )}
             </label>
             <div className="relative">
@@ -279,9 +282,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 required
                 className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] hover:border-[#2997FF]/50 focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer appearance-none"
               >
-                {technicians.map((t) => (
-                  <option key={t.id} value={t.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
-                    {t.name} — {t.specialty}
+                {technicians.map((tech) => (
+                  <option key={tech.id} value={tech.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
+                    {tech.name} — {tech.specialty}
                   </option>
                 ))}
               </select>
@@ -291,7 +294,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           {/* Selector de Obra / Ubicación */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
-              <span>Obra de Destino</span>
+              <span>{t.fieldSite}</span>
               {selectedSite && (
                 <span className="text-[11px] text-[#30D158] font-medium">{selectedSite.municipality}</span>
               )}
@@ -303,9 +306,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                 required
                 className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] hover:border-[#2997FF]/50 focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer appearance-none"
               >
-                {sites.map((s) => (
-                  <option key={s.id} value={s.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
-                    {s.name} ({s.municipality}) — {s.address}
+                {sites.map((site) => (
+                  <option key={site.id} value={site.id} className="bg-[var(--bg-card)] text-[var(--text-primary)]">
+                    {site.name} ({site.municipality}) — {site.address}
                   </option>
                 ))}
               </select>
@@ -314,23 +317,24 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
 
           {/* Fecha y Hora de Inicio */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {/* Fecha */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[var(--text-secondary)]">Fecha de la Visita</label>
+              <label className="text-xs font-semibold text-[var(--text-secondary)]">{t.fieldDate}</label>
               <div className="relative">
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   required
-                  className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer tabular-numbers"
+                  className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] hover:border-[#2997FF]/50 focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer tabular-numbers"
                 />
               </div>
             </div>
 
+            {/* Hora de Inicio */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[var(--text-secondary)] flex items-center justify-between">
-                <span>Hora de Inicio</span>
-                <span className="text-[10px] text-[var(--text-secondary)] tabular-numbers">Jornada 08:00–17:00</span>
+                <span>{t.fieldStartTime}</span>
               </label>
               <div className="relative">
                 <input
@@ -339,7 +343,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   onChange={(e) => setStartTime(e.target.value)}
                   required
                   step="300"
-                  className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer tabular-numbers"
+                  className="w-full min-hit-area px-3.5 py-2.5 bg-[var(--bg-card-hover)] hover:border-[#2997FF]/50 focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] outline-none focus:border-[#2997FF] transition-colors cursor-pointer tabular-numbers"
                 />
               </div>
             </div>
@@ -348,8 +352,8 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
           {/* Duración con Presets Rápidos */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-[var(--text-secondary)] font-semibold">Duración Estimada</span>
-              <span className="text-[var(--text-primary)] font-bold tabular-numbers">{durationMinutes} minutos</span>
+              <span className="text-[var(--text-secondary)] font-semibold">{t.fieldDuration}</span>
+              <span className="text-[var(--text-primary)] font-bold tabular-numbers">{durationMinutes} {t.fieldDurationHint}</span>
             </div>
             
             <div className="grid grid-cols-4 gap-2">
@@ -360,7 +364,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
                   onClick={() => setDurationMinutes(mins)}
                   className={`apple-press min-hit-area py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer tabular-numbers ${
                     durationMinutes === mins
-                      ? 'bg-[#2997FF] text-white border-[#2997FF] shadow-sm'
+                      ? 'bg-[#2997FF]/20 border-[#2997FF] text-[#2997FF]'
                       : 'bg-[var(--bg-card-hover)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
@@ -369,11 +373,11 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               ))}
             </div>
 
-            {/* Preview de Fin de Visita */}
+            {/* Preview de Fin de Visita con Tabular Nums */}
             <div className="flex items-center justify-between text-xs bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2">
               <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
                 <Clock className="w-3.5 h-3.5 text-[#2997FF]" />
-                <span>Horario previsto de ocupación:</span>
+                <span>{t.estimatedEnd}</span>
               </div>
               <div className="flex items-center gap-1 font-bold text-[var(--text-primary)] tabular-numbers">
                 <span>{startTime}</span>
@@ -383,15 +387,15 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
             </div>
           </div>
 
-          {/* Notas de Obra (Opcional) */}
+          {/* Notas de Obra */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-[var(--text-secondary)]">
-              Notas de la Inspección (Opcional)
+              {t.fieldNotes}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Ej. Revisión de ferralla y encofrados en cota cero..."
+              placeholder={t.fieldNotesPlaceholder}
               rows={2}
               className="w-full px-3.5 py-2.5 bg-[var(--bg-card-hover)] focus:bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-xl text-xs sm:text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[#2997FF] transition-colors resize-none"
             />
@@ -403,9 +407,9 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="apple-press min-hit-area px-4 py-2.5 rounded-xl text-xs sm:text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-transparent hover:border-[var(--border-subtle)] cursor-pointer disabled:opacity-50"
+              className="apple-press min-hit-area px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)] border border-transparent hover:border-[var(--border-subtle)] cursor-pointer disabled:opacity-50"
             >
-              Cancelar
+              {t.cancelBtn}
             </button>
             <button
               type="submit"
@@ -415,12 +419,12 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               {isPending ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Validando...</span>
+                  <span>{t.validatingBtn}</span>
                 </>
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4 stroke-[2.5]" />
-                  <span>Confirmar y Programar</span>
+                  <span>{t.confirmScheduleBtn}</span>
                 </>
               )}
             </button>
