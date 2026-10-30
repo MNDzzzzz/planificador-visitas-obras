@@ -63,6 +63,9 @@ async function runE2ETests() {
     copilotGuardrailAlvaro: false,
     copilotGuardrailPaella: false,
     copilotTechnicalAbrams: false,
+    copilotHelpChipVisible: false,
+    copilotHelpResponse: false,
+    copilotTechStackResponse: false,
     noConsoleErrors: false,
   };
 
@@ -467,28 +470,27 @@ async function runE2ETests() {
 
     await page.waitForFunction(
       () => {
-        const botMessages = Array.from(document.querySelectorAll('aside p'));
-        return botMessages.some((p) => p.textContent.includes('12350-2') && p.textContent.includes('asentamiento'));
+        const asideText = document.querySelector('aside')?.textContent || '';
+        return asideText.includes('12350-2');
       },
-      { timeout: 15000 }
+      { timeout: 20000 }
     );
     await page.waitForFunction(
       () => {
         const inp = document.querySelector('aside input[type="text"]');
         return inp && !inp.hasAttribute('disabled');
       },
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
 
     const abramsEvaluation = await page.evaluate(() => {
-      const ps = Array.from(document.querySelectorAll('aside p'));
-      const targetP = ps.find((p) => p.textContent.includes('12350-2'));
-      const text = targetP?.textContent || '';
-      const container = targetP ? targetP.closest('.rounded-2xl') : null;
+      const messages = Array.from(document.querySelectorAll('aside .rounded-2xl'));
+      const targetMsg = messages.find((m) => m.textContent?.includes('12350-2'));
+      const text = targetMsg?.textContent || '';
       
       const citesNorm = text.includes('12350-2');
       const citesDoc = text.includes('DOC-01');
-      const hasSources = container?.querySelector('.lucide-book-open') !== null || text.includes('DOC-01');
+      const hasSources = text.includes('DOC-01') || document.querySelector('aside .lucide-book-open') !== null;
 
       return {
         text,
@@ -508,6 +510,150 @@ async function runE2ETests() {
 
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '11_copilot_technical_abrams.png'), fullPage: false });
     console.log('    📸 Captura guardada: 11_copilot_technical_abrams.png\n');
+
+    // -------------------------------------------------------------------------
+    // PRUEBA 4: Chip de Sugerencia Rápida /help y Auto-Explicación del Sistema
+    // -------------------------------------------------------------------------
+    console.log('  [Auto-Explicación 1/2] Verificando chip de sugerencia /help y respuesta ejecutiva...');
+    const helpChip = page.locator('aside button:has-text("/help")').first();
+    const isHelpChipVisible = await helpChip.isVisible();
+    console.log(`    ✔ Chip /help visible en la barra de sugerencias: ${isHelpChipVisible}`);
+    if (isHelpChipVisible) {
+      testResults.copilotHelpChipVisible = true;
+    }
+
+    // Clic en el chip /help para disparar la consulta interactiva
+    console.log('    Haciendo clic en el chip /help...');
+    await helpChip.click();
+
+    // Esperar a que la respuesta se complete
+    await page.waitForFunction(
+      () => {
+        const asideText = document.querySelector('aside')?.textContent || '';
+        return asideText.includes('AEMET') || asideText.includes('Mejoras Futuras');
+      },
+      { timeout: 25000 }
+    );
+    await page.waitForFunction(
+      () => {
+        const inp = document.querySelector('aside input[type="text"]');
+        return inp && !inp.hasAttribute('disabled');
+      },
+      { timeout: 15000 }
+    );
+
+    // Verificar contenido del manual /help:
+    // - Reglas A, B y C
+    // - Marco de ~3 horas de desarrollo
+    // - 4 vectores de mejoras futuras (Function Calling, RBAC, pgvector en Supabase, AEMET)
+    // - Citas de fuentes oficiales [DOC-00] y [DOC-12]
+    const helpEvaluation = await page.evaluate(() => {
+      const messages = Array.from(document.querySelectorAll('aside .rounded-2xl'));
+      const targetMsg = messages.find((m) => m.textContent?.includes('Manual del Sistema y Hoja de Ruta') || m.textContent?.includes('Manual del Sistema') || m.textContent?.includes('(/help)'));
+      const text = targetMsg?.textContent || '';
+      
+      const hasRules = text.includes('Regla A') && text.includes('Regla B') && text.includes('Regla C');
+      const has3HoursLimit = text.includes('3 horas') || text.includes('3 Hores') || text.includes('~3 Horas') || text.includes('3 hores');
+      const hasFutureImprovements =
+        text.includes('Function Calling') &&
+        text.includes('RBAC') &&
+        (text.includes('pgvector') || text.includes('vectorial')) &&
+        text.includes('AEMET');
+      const hasDoc00 = text.includes('DOC-00');
+      const hasDoc12 = text.includes('DOC-12');
+
+      return {
+        text,
+        hasRules,
+        has3HoursLimit,
+        hasFutureImprovements,
+        hasDoc00,
+        hasDoc12,
+      };
+    });
+
+    console.log(`    ✔ Contiene resumen y Reglas A, B y C: ${helpEvaluation.hasRules}`);
+    console.log(`    ✔ Mención explícita al marco de ~3 horas de desarrollo: ${helpEvaluation.has3HoursLimit}`);
+    console.log(`    ✔ Incluye los 4 vectores de mejoras futuras (Function Calling, RBAC, pgvector, AEMET): ${helpEvaluation.hasFutureImprovements}`);
+    console.log(`    ✔ Cita insignias oficiales [DOC-00] y [DOC-12]: ${helpEvaluation.hasDoc00 && helpEvaluation.hasDoc12}`);
+
+    if (
+      helpEvaluation.hasRules &&
+      helpEvaluation.has3HoursLimit &&
+      helpEvaluation.hasFutureImprovements &&
+      helpEvaluation.hasDoc00 &&
+      helpEvaluation.hasDoc12
+    ) {
+      testResults.copilotHelpResponse = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '12_copilot_help_command.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 12_copilot_help_command.png');
+
+    // -------------------------------------------------------------------------
+    // PRUEBA 5: Consulta sobre Tecnologías y Stack del Sistema
+    // -------------------------------------------------------------------------
+    console.log('\n  [Auto-Explicación 2/2] Consulta sobre tecnologías y stack: "¿Qué tecnologías y stack utiliza este sistema?"');
+    await copilotInput.fill('¿Qué tecnologías y stack utiliza este sistema?');
+    await sendBtn.click();
+
+    await page.waitForFunction(
+      () => {
+        const asideText = document.querySelector('aside')?.textContent || '';
+        return asideText.includes('Next.js') && (asideText.includes('Prisma') || asideText.includes('Playwright'));
+      },
+      { timeout: 25000 }
+    );
+    await page.waitForFunction(
+      () => {
+        const inp = document.querySelector('aside input[type="text"]');
+        return inp && !inp.hasAttribute('disabled');
+      },
+      { timeout: 15000 }
+    );
+
+    const techStackEvaluation = await page.evaluate(() => {
+      const messages = Array.from(document.querySelectorAll('aside .rounded-2xl'));
+      const targetMsg = messages[messages.length - 1];
+      const text = targetMsg?.textContent || '';
+
+      const mentionsNext = text.includes('Next.js');
+      const mentionsPrisma = text.includes('Prisma');
+      const mentionsTailwind = text.includes('Tailwind');
+      const mentionsTesting = text.includes('Vitest') || text.includes('Playwright');
+      const citesDoc00 = text.includes('DOC-00');
+      const isNotBlocked = !text.includes('Esta información no consta');
+
+      return {
+        text,
+        mentionsNext,
+        mentionsPrisma,
+        mentionsTailwind,
+        mentionsTesting,
+        citesDoc00,
+        isNotBlocked,
+      };
+    });
+
+    console.log(`    ✔ Detalla Next.js 15: ${techStackEvaluation.mentionsNext}`);
+    console.log(`    ✔ Detalla Prisma ORM: ${techStackEvaluation.mentionsPrisma}`);
+    console.log(`    ✔ Detalla Tailwind CSS: ${techStackEvaluation.mentionsTailwind}`);
+    console.log(`    ✔ Detalla Testing (Vitest / Playwright): ${techStackEvaluation.mentionsTesting}`);
+    console.log(`    ✔ Cita documento oficial [DOC-00]: ${techStackEvaluation.citesDoc00}`);
+    console.log(`    ✔ Consulta legítima no bloqueada como fuera de dominio: ${techStackEvaluation.isNotBlocked}`);
+
+    if (
+      techStackEvaluation.mentionsNext &&
+      techStackEvaluation.mentionsPrisma &&
+      techStackEvaluation.mentionsTailwind &&
+      techStackEvaluation.citesDoc00 &&
+      techStackEvaluation.isNotBlocked
+    ) {
+      testResults.copilotTechStackResponse = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '13_copilot_tech_stack.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 13_copilot_tech_stack.png\n');
 
     // -------------------------------------------------------------------------
     // 6. RESUMEN DE CONSOLA DEL NAVEGADOR

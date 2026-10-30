@@ -210,5 +210,48 @@ describe('Sistema de Caché Exacta y Semántica para LabQA Copilot', () => {
       expect(res.answer).toContain('Carlos Gómez, Laura Martín, Alejandro Ruiz y Sofía Navarro');
       expect(res.sources).toEqual([]);
     });
+
+    it('responde ejecutivamente al comando /help con fuentes DOC-00 y DOC-12', async () => {
+      const res = await askLabQACopilot({
+        query: '/help',
+        language: 'es',
+      });
+
+      expect(res.answer).toContain('Manual del Sistema y Hoja de Ruta (/help)');
+      expect(res.answer).toContain('¿Qué hace esta aplicación?');
+      expect(res.sources.map((s) => s.id)).toEqual(['DOC-00', 'DOC-12']);
+    });
+
+    it('responde a las variantes /ayuda y /ajuda en caché con fuentes DOC-00 y DOC-12', async () => {
+      const resAyuda = await askLabQACopilot({
+        query: '/ayuda',
+        language: 'es',
+      });
+      expect(resAyuda.answer).toContain('Manual del Sistema y Hoja de Ruta (/help)');
+      expect(resAyuda.sources.map((s) => s.id)).toEqual(['DOC-00', 'DOC-12']);
+
+      const resAjuda = await askLabQACopilot({
+        query: '/ajuda',
+        language: 'ca',
+      });
+      expect(resAjuda.answer).toContain('Manual del Sistema i Full de Ruta (/help)');
+      expect(resAjuda.sources.map((s) => s.id)).toEqual(['DOC-00', 'DOC-12']);
+    });
+
+    it('responde a consultas sobre cómo funciona esta app y qué tecnologías usa el proyecto', async () => {
+      const resFunc = await askLabQACopilot({
+        query: 'cómo funciona esta app',
+        language: 'es',
+      });
+      expect(resFunc.answer).toContain('¿Qué hace esta aplicación?');
+      expect(resFunc.sources.map((s) => s.id)).toContain('DOC-00');
+
+      const resTech = await askLabQACopilot({
+        query: 'qué tecnologías usa el proyecto',
+        language: 'es',
+      });
+      expect(resTech.answer).toContain('¿Qué hace esta aplicación?');
+      expect(resTech.sources.map((s) => s.id)).toContain('DOC-00');
+    });
   });
 });

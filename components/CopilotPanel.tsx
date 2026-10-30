@@ -28,6 +28,127 @@ interface CopilotPanelProps {
   language: Language;
 }
 
+/**
+ * Renderiza tokens inline (negrita, código mono, citas documentales [DOC-xx])
+ */
+function renderInlineTokens(text: string, prefix: string): React.ReactNode[] {
+  const regex = /(\*\*.*?\*\*|`.*?`|\[DOC-\d+\])/g;
+  const parts = text.split(regex);
+
+  return parts.map((part, idx) => {
+    const key = `${prefix}-${idx}`;
+    if (!part) return null;
+
+    if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+      return (
+        <strong key={key} className="font-semibold text-[var(--text-primary)]">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith('`') && part.endsWith('`') && part.length >= 2) {
+      return (
+        <code
+          key={key}
+          className="px-1.5 py-0.5 rounded text-[11px] font-mono bg-white/[0.06] text-[#2997FF] border border-[var(--border-subtle)]"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    if (/^\[DOC-\d+\]$/.test(part)) {
+      return (
+        <span
+          key={key}
+          className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-semibold bg-[#2997FF]/15 text-[#2997FF] border border-[#2997FF]/30 mx-0.5 align-baseline shadow-xs"
+        >
+          {part}
+        </span>
+      );
+    }
+
+    return <span key={key}>{part}</span>;
+  });
+}
+
+/**
+ * Renderizador de Markdown enriquecido para respuestas técnicas del Copilot (Apple Design System)
+ */
+function renderFormattedMessage(text: string) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      elements.push(<div key={`blank-${i}`} className="h-1.5" />);
+      continue;
+    }
+
+    // Encabezados Markdown (###, ##, #)
+    if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+      const headingText = trimmed.replace(/^#+\s*/, '');
+      elements.push(
+        <h4
+          key={`h-${i}`}
+          className="text-xs sm:text-[13px] font-bold text-[var(--text-primary)] tracking-[-0.015em] mt-2.5 mb-1 pb-1 border-b border-[var(--border-subtle)] flex items-center gap-1.5"
+        >
+          {renderInlineTokens(headingText, `h-${i}`)}
+        </h4>
+      );
+      continue;
+    }
+
+    // Listas con viñeta (•, -, *)
+    if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      const itemText = trimmed.replace(/^[•\-*]\s*/, '');
+      elements.push(
+        <div
+          key={`bullet-${i}`}
+          className="flex items-start gap-2 my-0.5 pl-0.5 text-xs sm:text-[13px] leading-relaxed text-[var(--text-primary)]"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-[#2997FF] mt-1.5 shrink-0" />
+          <div className="flex-1 min-w-0">{renderInlineTokens(itemText, `b-${i}`)}</div>
+        </div>
+      );
+      continue;
+    }
+
+    // Listas numeradas (1., 2., etc.)
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    if (numMatch) {
+      const num = numMatch[1];
+      const itemText = numMatch[2];
+      elements.push(
+        <div
+          key={`num-${i}`}
+          className="flex items-start gap-2 my-0.5 pl-0.5 text-xs sm:text-[13px] leading-relaxed text-[var(--text-primary)]"
+        >
+          <span className="text-[11px] font-bold text-[#2997FF] font-mono shrink-0 tabular-nums mt-0.5">
+            {num}.
+          </span>
+          <div className="flex-1 min-w-0">{renderInlineTokens(itemText, `n-${i}`)}</div>
+        </div>
+      );
+      continue;
+    }
+
+    // Párrafo estándar
+    elements.push(
+      <p key={`p-${i}`} className="text-xs sm:text-[13px] leading-relaxed text-[var(--text-primary)] my-0.5">
+        {renderInlineTokens(line, `p-${i}`)}
+      </p>
+    );
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
+
 export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
   const t = translations[language];
   const [messages, setMessages] = useState<Message[]>([
@@ -203,19 +324,45 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
     }
   };
 
-  const samplePrompts =
+  const samplePrompts: { label: string; query: string }[] =
     language === 'ca'
       ? [
-          'Com es gestiona el temps mínim de trasllat entre obres?',
-          'Quin és el protocol de presa de provetes de formigó a 28 dies?',
-          'Com es fa l\'assaig del Con d\'Abrams?',
-          'Quins EPIs són obligatoris per a la inspecció?',
+          { label: '💡 /help (Guia del sistema i roadmap)', query: '/help' },
+          {
+            label: 'Com es gestiona el temps mínim de trasllat entre obres?',
+            query: 'Com es gestiona el temps mínim de trasllat entre obres?',
+          },
+          {
+            label: 'Quin és el protocol de presa de provetes de formigó a 28 dies?',
+            query: 'Quin és el protocol de presa de provetes de formigó a 28 dies?',
+          },
+          {
+            label: "Com es fa l'assaig del Con d'Abrams?",
+            query: "Com es fa l'assaig del Con d'Abrams?",
+          },
+          {
+            label: 'Quins EPIs són obligatoris per a la inspecció?',
+            query: 'Quins EPIs són obligatoris per a la inspecció?',
+          },
         ]
       : [
-          '¿Cómo se gestiona el tiempo mínimo de traslado entre obras?',
-          '¿Cuál es el protocolo de toma de probetas de hormigón a 28 días?',
-          '¿Cómo se realiza el ensayo del Cono de Abrams?',
-          '¿Qué EPIs son obligatorios para la inspección?',
+          { label: '💡 /help (Guía del sistema y roadmap)', query: '/help' },
+          {
+            label: '¿Cómo se gestiona el tiempo mínimo de traslado entre obras?',
+            query: '¿Cómo se gestiona el tiempo mínimo de traslado entre obras?',
+          },
+          {
+            label: '¿Cuál es el protocolo de toma de probetas de hormigón a 28 días?',
+            query: '¿Cuál es el protocolo de toma de probetas de hormigón a 28 días?',
+          },
+          {
+            label: '¿Cómo se realiza el ensayo del Cono de Abrams?',
+            query: '¿Cómo se realiza el ensayo del Cono de Abrams?',
+          },
+          {
+            label: '¿Qué EPIs son obligatorios para la inspección?',
+            query: '¿Qué EPIs son obligatorios para la inspección?',
+          },
         ];
 
   return (
@@ -278,7 +425,11 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
                       : 'bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] text-[var(--text-primary)] rounded-tl-none'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  {isUser ? (
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                  ) : (
+                    renderFormattedMessage(msg.text)
+                  )}
 
                   {/* Indicador de streaming activo */}
                   {msg.isStreaming && (
@@ -287,19 +438,21 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
 
                   {/* Fuentes / Citas Documentales (solo si existen fuentes válidas) */}
                   {Array.isArray(msg.sources) && msg.sources.filter(Boolean).length > 0 && (
-                    <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] space-y-1">
+                    <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] space-y-1.5">
                       <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-1">
                         <BookOpen className="w-3 h-3 text-[#2997FF]" />
                         <span>{t.copilotStandardsTitle}</span>
                       </p>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {msg.sources.filter(Boolean).map((s) => (
                           <span
                             key={s.id}
-                            className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2997FF]/10 text-[#2997FF] border border-[#2997FF]/25 truncate max-w-[240px]"
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#2997FF]/10 text-[#2997FF] border border-[#2997FF]/25 shadow-xs"
                             title={`${s.id}: ${s.title}`}
                           >
-                            {s.id}: {s.title}
+                            <span className="font-mono font-semibold">{s.id}</span>
+                            <span className="text-[var(--text-tertiary)] opacity-60">•</span>
+                            <span className="truncate max-w-[220px] text-[var(--text-primary)]">{s.title}</span>
                           </span>
                         ))}
                       </div>
@@ -345,15 +498,22 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
         {/* Sugerencias Rápidas */}
         <div className="px-3 py-2 border-t border-[var(--border-subtle)] bg-[var(--bg-card-hover)] shrink-0">
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {samplePrompts.map((prompt, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSendMessage(prompt)}
-                className="apple-press text-[11px] whitespace-nowrap px-2.5 py-1 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#2997FF]/40 cursor-pointer transition-all"
-              >
-                {prompt}
-              </button>
-            ))}
+            {samplePrompts.map((item, idx) => {
+              const isHelp = item.query === '/help';
+              return (
+                <button
+                  key={idx}
+                  onClick={() => handleSendMessage(item.query)}
+                  className={`apple-press text-[11px] whitespace-nowrap px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
+                    isHelp
+                      ? 'bg-[#2997FF]/10 border-[#2997FF]/35 text-[#2997FF] font-medium hover:bg-[#2997FF]/20 hover:border-[#2997FF]/50 shadow-xs'
+                      : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[#2997FF]/40'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

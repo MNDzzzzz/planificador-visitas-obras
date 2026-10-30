@@ -238,4 +238,161 @@ describe('Streaming API Copilot (/api/copilot/stream)', () => {
     expect(accumulatedText).toContain('LabQA Copilot');
     expect(accumulatedText).not.toContain('no consta');
   });
+
+  it('debe responder al comando /help con streaming, fuentes DOC-00 y DOC-12 y sin errores', async () => {
+    const req = new NextRequest('http://localhost:3000/api/copilot/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: '/help',
+        language: 'es',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = '';
+    let sources: any[] | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const rawChunk = decoder.decode(value);
+      const lines = rawChunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.sources !== undefined) sources = parsed.sources;
+              if (parsed.text) accumulatedText += parsed.text;
+            } catch {}
+          }
+        }
+      }
+    }
+
+    expect(accumulatedText).toContain('LabQA Copilot — Manual del Sistema y Hoja de Ruta (/help)');
+    expect(accumulatedText).toContain('Marco Temporal de Desarrollo (Prueba Técnica de ~3 Horas)');
+    expect(accumulatedText).toContain('Mejoras Futuras Prioritarias (Hoja de Ruta a Producción)');
+    expect(sources).toEqual([
+      {
+        id: 'DOC-00',
+        title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+        category: 'Arquitectura y Sistema',
+      },
+      {
+        id: 'DOC-12',
+        title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+        category: 'Hoja de Ruta y Roadmap',
+      },
+    ]);
+  }, 15000);
+
+  it('debe responder a la variante /ajuda en catalán con streaming y fuentes DOC-00 y DOC-12', async () => {
+    const req = new NextRequest('http://localhost:3000/api/copilot/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: '/ajuda',
+        language: 'ca',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = '';
+    let sources: any[] | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const rawChunk = decoder.decode(value);
+      const lines = rawChunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.sources !== undefined) sources = parsed.sources;
+              if (parsed.text) accumulatedText += parsed.text;
+            } catch {}
+          }
+        }
+      }
+    }
+
+    expect(accumulatedText).toContain('LabQA Copilot — Manual del Sistema i Full de Ruta (/help)');
+    expect(accumulatedText).toContain('Què fa aquesta aplicació?');
+    expect(sources).toEqual([
+      {
+        id: 'DOC-00',
+        title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+        category: 'Arquitectura y Sistema',
+      },
+      {
+        id: 'DOC-12',
+        title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+        category: 'Hoja de Ruta y Roadmap',
+      },
+    ]);
+  }, 15000);
+
+  it('debe responder a consultas sobre "cómo funciona esta app" con streaming y fuentes DOC-00 y DOC-12', async () => {
+    const req = new NextRequest('http://localhost:3000/api/copilot/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: 'cómo funciona esta app',
+        language: 'es',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = '';
+    let sources: any[] | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const rawChunk = decoder.decode(value);
+      const lines = rawChunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.sources !== undefined) sources = parsed.sources;
+              if (parsed.text) accumulatedText += parsed.text;
+            } catch {}
+          }
+        }
+      }
+    }
+
+    expect(accumulatedText).toContain('LabQA Copilot — Manual del Sistema y Hoja de Ruta (/help)');
+    expect(accumulatedText).toContain('¿Qué hace esta aplicación?');
+    expect(sources).toEqual([
+      {
+        id: 'DOC-00',
+        title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+        category: 'Arquitectura y Sistema',
+      },
+      {
+        id: 'DOC-12',
+        title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+        category: 'Hoja de Ruta y Roadmap',
+      },
+    ]);
+  }, 15000);
 });

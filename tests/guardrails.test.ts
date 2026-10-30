@@ -120,6 +120,90 @@ describe('Blindaje de Copilot: Guardarraíles Anti-Alucinación (lib/rag/guardra
     });
   });
 
+  describe('Guardarraíl 0: Comando /help y Manual del Sistema', () => {
+    it('intercepta inmediatamente /help en castellano con sources DOC-00 y DOC-12', () => {
+      const res = evaluateGuardrails('/help', 'es');
+      expect(res).not.toBeNull();
+      expect(res?.isIntercepted).toBe(true);
+      expect(res?.answer).toContain('LabQA Copilot — Manual del Sistema y Hoja de Ruta (/help)');
+      expect(res?.answer).toContain('¿Qué hace esta aplicación?');
+      expect(res?.answer).toContain('Marco Temporal de Desarrollo (Prueba Técnica de ~3 Horas)');
+      expect(res?.answer).toContain('Mejoras Futuras Prioritarias (Hoja de Ruta a Producción)');
+      expect(res?.sources).toEqual([
+        {
+          id: 'DOC-00',
+          title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+          category: 'Arquitectura y Sistema',
+        },
+        {
+          id: 'DOC-12',
+          title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+          category: 'Hoja de Ruta y Roadmap',
+        },
+      ]);
+    });
+
+    it('intercepta variantes como /ayuda, /ajuda y help en catalán', () => {
+      const resCa = evaluateGuardrails('/ajuda', 'ca');
+      expect(resCa).not.toBeNull();
+      expect(resCa?.isIntercepted).toBe(true);
+      expect(resCa?.answer).toContain('LabQA Copilot — Manual del Sistema i Full de Ruta (/help)');
+      expect(resCa?.answer).toContain('Què fa aquesta aplicació?');
+      expect(resCa?.sources.length).toBe(2);
+
+      const resHelp = evaluateGuardrails('help', 'es');
+      expect(resHelp?.isIntercepted).toBe(true);
+
+      const resAyuda = evaluateGuardrails('/ayuda', 'es');
+      expect(resAyuda?.isIntercepted).toBe(true);
+    });
+
+    it('responde con el manual y fuentes DOC-00 y DOC-12 ante "¿Cómo funciona esta app?"', () => {
+      const res = evaluateGuardrails('¿Cómo funciona esta app?', 'es');
+      expect(res).not.toBeNull();
+      expect(res?.isIntercepted).toBe(true);
+      expect(res?.answer).toContain('¿Qué hace esta aplicación?');
+      expect(res?.sources).toEqual([
+        {
+          id: 'DOC-00',
+          title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+          category: 'Arquitectura y Sistema',
+        },
+        {
+          id: 'DOC-12',
+          title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+          category: 'Hoja de Ruta y Roadmap',
+        },
+      ]);
+    });
+
+    it('responde con el manual y fuentes DOC-00 y DOC-12 ante "¿Qué tecnologías usa el proyecto?"', () => {
+      const res = evaluateGuardrails('¿Qué tecnologías usa el proyecto?', 'es');
+      expect(res).not.toBeNull();
+      expect(res?.isIntercepted).toBe(true);
+      expect(res?.answer).toContain('¿Qué hace esta aplicación?');
+      expect(res?.sources).toEqual([
+        {
+          id: 'DOC-00',
+          title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+          category: 'Arquitectura y Sistema',
+        },
+        {
+          id: 'DOC-12',
+          title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+          category: 'Hoja de Ruta y Roadmap',
+        },
+      ]);
+    });
+
+    it('NO bloquea preguntas sobre la arquitectura o tecnologías del sistema como fuera de dominio', () => {
+      const resArch = evaluateGuardrails('¿Qué tecnologías y stack utiliza este sistema?', 'es');
+      if (resArch !== null) {
+        expect(resArch.answer).not.toContain('no consta');
+      }
+    });
+  });
+
   describe('No Intercepción de Consultas Válidas', () => {
     it('NO intercepta consultas técnicas sobre normativa y ensayos (Cono de Abrams)', () => {
       const res = evaluateGuardrails('¿Cómo se realiza el ensayo del cono de Abrams según UNE-EN 12350-2?', 'es');

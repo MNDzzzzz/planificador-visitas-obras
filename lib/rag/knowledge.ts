@@ -4,12 +4,59 @@
 export interface DocumentSection {
   id: string;
   title: string;
-  category: 'Hormigón' | 'Geotecnia' | 'Acero y Estructuras' | 'Acústica' | 'Seguridad y EPIs' | 'Cubiertas y Fachadas' | 'ISO 9001 y Calidad' | 'Operativa y Logística' | 'Instalaciones RITE' | 'Topografía y Estructuras';
+  category:
+    | 'Hormigón'
+    | 'Geotecnia'
+    | 'Acero y Estructuras'
+    | 'Acústica'
+    | 'Seguridad y EPIs'
+    | 'Cubiertas y Fachadas'
+    | 'ISO 9001 y Calidad'
+    | 'Operativa y Logística'
+    | 'Instalaciones RITE'
+    | 'Topografía y Estructuras'
+    | 'Arquitectura y Sistema'
+    | 'Hoja de Ruta y Roadmap';
   content: string;
   tags: string[];
 }
 
 export const technicalDocuments: DocumentSection[] = [
+  {
+    id: 'DOC-00',
+    title: 'Manual del Sistema, Arquitectura y Tecnologías del Planificador',
+    category: 'Arquitectura y Sistema',
+    content: `
+MANUAL INTEGRAL DEL SISTEMA Y ARQUITECTURA TÉCNICA DEL PLANIFICADOR:
+1. Propósito y Dominio:
+   - Plataforma web de alta ingeniería para la planificación operativa y control de calidad de ensayos en obra (edificación y obra civil).
+   - Resuelve la asignación técnica mediante validaciones matemáticas en tiempo real de solapamientos, traslados viarios y jornada laboral.
+
+3. Stack Tecnológico de Vanguardia:
+   - Next.js 15 (App Router, Turbopack, React 19) con TypeScript estricto (cero any).
+   - Tailwind CSS v4 con Apple Design System (modo claro/oscuro de alto contraste WCAG AA, tipografía SF Pro con números tabulares tabular-nums).
+   - Prisma ORM con PostgreSQL (patrón Singleton para conexiones serverless) y almacenamiento en memoria reactivo pre-hidratado para arranque instantáneo sin dependencias.
+   - Zod para validación bidireccional cliente-servidor con tipado estricto.
+   - Suite de testing integral con Vitest (pruebas unitarias e integración de reglas de negocio) y Playwright (verificación End-to-End en navegador Chromium real).
+
+3. Motores de Negocio Vinculantes:
+   - Regla A (Sin Solapamientos): Validación max(S1, S2) < min(E1, E2) por técnico. Las visitas en estado CANCELLED liberan de inmediato el slot sin eliminar el registro histórico.
+   - Regla B (Traslado Dinámico): Matriz de tiempos de ruta en el Vallès con margen logístico de +5 min (estacionamiento, recepción, acondicionamiento de equipos) o cálculo geodésico Haversine con tortuosidad viaria (tau = 1.32). Si dos visitas consecutivas son en la misma obra, el traslado requerido es estrictamente de 0 minutos.
+   - Regla C (Jornada Laboral): Horario estricto de 08:00 a 17:00 en Europe/Madrid (480 a 1020 min desde medianoche), inmune a desfases horarios o DST. Duración mínima > 0 minutos.
+
+4. Asistente LabQA Copilot (RAG Híbrido):
+   - Integración con Google Gemini Streaming (timeout 4s) y fallback local enriquecido a 0ms.
+   - Base de conocimiento técnico con 13 procedimientos oficiales homologados.
+   - Caché semántica y exacta multinivel con similitud Jaccard/Trigramas.
+   - Guardarraíles anti-alucinación estrictos: bloqueo de materias ajenas a secas y reporte de plantilla oficial de técnicos homologados (Carlos Gómez, Laura Martín, Alejandro Ruiz, Sofía Navarro).
+   - Modo llamada de voz en tiempo real con Web Speech API y comando ejecutivo /help.
+
+5. Automatizaciones y Telemetría:
+   - Simulador de webhooks n8n (Webhook Trigger -> Notificación Telegram -> Reserva Cámara Húmeda -> ERP ISO 9001).
+   - Internacionalización bilingüe nativa e instantánea [Català / Español].
+    `,
+    tags: ['sistema', 'manual', 'arquitectura', 'nextjs', 'typescript', 'prisma', 'tailwind', 'regla a', 'regla b', 'regla c', 'copilot', 'gemini', 'rag', 'n8n', 'help', 'ayuda', 'ajuda'],
+  },
   {
     id: 'DOC-01',
     title: 'Procedimiento de Muestreo de Hormigón Fresco y Ensayo de Consistencia (UNE-EN 12350-2)',
@@ -205,5 +252,29 @@ PROTOCOLO DINÁMICO DE RUTAS Y LOGÍSTICA DE LABORATORIO (VALLÈS Y ÁREA METROP
    - Para municipios no tabulados, el sistema aplica la fórmula geodésica Haversine afectada por un factor de tortuosidad vial de 1.32 más 5 minutos de buffer. En ausencia de coordenadas se aplica el margen preventivo por defecto de 30 minutos.
     `,
     tags: ['rutas', 'valles', 'desplazamiento', 'c-58', 'ap-7', 'c-16', 'c-60', 'terrassa', 'sabadell', 'sant cugat', 'rubi', 'granollers', 'mataro', 'buffer 5 min', 'logistica'],
+  },
+  {
+    id: 'DOC-12',
+    title: 'Hoja de Ruta, Limitación de 3 Horas y Mejoras Futuras',
+    category: 'Hoja de Ruta y Roadmap',
+    content: `
+HOJA DE RUTA DE PRODUCCIÓN, MARCO DE 3 HORAS Y MEJORAS FUTURAS:
+1. Contexto de Desarrollo y Marco Temporal:
+   - La presente solución técnica fue concebida, desarrollada y blindada en un marco intensivo de aproximadamente 3 horas para la prueba técnica.
+   - A pesar de la limitación temporal, se priorizó la máxima robustez: motor matemático puro de reglas A/B/C, 126 pruebas automatizadas con 100% de éxito, arquitectura multi-agente, diseño Apple con modo oscuro/claro y Copilot RAG con guardarraíles.
+
+2. Funcionalidades de Alto Valor Agregadas en el Plazo:
+   - Matriz de rutas local calibrada del Vallès a coste 0€ (evitando facturación por llamadas a Google Distance Matrix API).
+   - Modo llamada de voz interactiva bidireccional (Speech-to-Text y Text-to-Speech) integrado en el Copilot.
+   - Simulador interactivo de workflows n8n para orquestación de eventos de laboratorio.
+   - Sistema de guardarraíles anti-alucinación sin fallos silenciosos y comando rápido /help.
+
+3. Mejoras Futuras Prioritarias (Evolución a Producción sin Límite de Tiempo):
+   - 1. Function Calling / Tool Calling Interactivo en Copilot: Capacitar al modelo de lenguaje para agendar, posponer o cancelar visitas directamente desde la conversación ("Programa una visita para Carlos mañana a las 9 en Terrassa"), abriendo el modal de confirmación con los datos precargados.
+   - 2. Seguridad Empresarial y RBAC Granular: Autenticación federada (NextAuth / Supabase Auth) con roles estrictos: Director de Calidad (auditoría total y configuración de tolerancias), Coordinador de Laboratorio (gestión completa de agenda) y Técnico de Ensayos (acceso exclusivo a su hoja de ruta y firma digital de actas).
+   - 3. IA Comercial y Base Vectorial Persistente: Sustituir la búsqueda léxico-semántica por embeddings vectoriales persistentes con pgvector en PostgreSQL / Supabase, implementando chunking dinámico de normativa UNE/CTE y re-ranking jerárquico.
+   - 4. Telemetría de Tráfico en Tiempo Real y Climatología: Conexión con Google Routes API / TomTom para tiempos con congestión en vivo en autopistas (C-58, AP-7) e integración con la API de AEMET para emitir alertas tempranas de lluvia o heladas que impidan el vertido de hormigón fresco o sellado de cubiertas.
+    `,
+    tags: ['roadmap', 'hoja de ruta', '3 horas', 'mejoras futuras', 'function calling', 'rbac', 'pgvector', 'supabase', 'trafico', 'clima', 'aemet', 'futuro', 'help', 'ayuda', 'ajuda'],
   },
 ];
