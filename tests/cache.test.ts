@@ -196,6 +196,19 @@ describe('Sistema de Caché Exacta y Semántica para LabQA Copilot', () => {
 
       expect(res.provider).toBe('local-rag');
       expect(res.answer).toContain('no consta');
+      expect(res.sources).toEqual([]);
+    });
+
+    it('aplica guardarraíl estricto para preguntas sobre trabajadores no pertenecientes a la plantilla', async () => {
+      const res = await askLabQACopilot({
+        query: '¿Trabaja Álvaro en el laboratorio?',
+        language: 'es',
+      });
+
+      expect(res.provider).toBe('local-rag');
+      expect(res.answer).toContain('no forma parte del equipo técnico');
+      expect(res.answer).toContain('Carlos Gómez, Laura Martín, Alejandro Ruiz y Sofía Navarro');
+      expect(res.sources).toEqual([]);
     });
   });
 });

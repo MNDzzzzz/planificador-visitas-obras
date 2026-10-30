@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { retrieveContext } from '../../../../lib/rag/engine';
 import { findInCache, saveToCache } from '../../../../lib/rag/cache';
 import { technicalDocuments } from '../../../../lib/rag/knowledge';
+import { evaluateGuardrails, OFFICIAL_TECHNICIANS } from '../../../../lib/rag/guardrails';
+import { getInitialDataAction } from '../../../../lib/actions/visits';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -82,6 +84,25 @@ export async function POST(req: NextRequest) {
     isCatalan = language === 'ca';
 
     // -----------------------------------------------------------------------
+    // 0. EVALUACIÓN DE GUARDARRAÍLES ANTI-ALUCINACIÓN (Prioridad 0: Blindaje Estricto)
+    // -----------------------------------------------------------------------
+    const guardrail = evaluateGuardrails(cleanQuery, language);
+    if (guardrail && guardrail.isIntercepted) {
+      const stream = createTextStream(
+        guardrail.answer,
+        guardrail.sources,
+        'local-rag'
+      );
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // -----------------------------------------------------------------------
     // 1. CONSULTA A CACHÉ EXACTA O SEMÁNTICA (Prioridad 1: 0ms Latencia)
     // -----------------------------------------------------------------------
     const cachedResult = findInCache(cleanQuery, language);
@@ -101,12 +122,32 @@ export async function POST(req: NextRequest) {
     }
 
     // -----------------------------------------------------------------------
-    // 2. RECUPERAR CONTEXTO DOCUMENTAL Y OPERATIVO
+    // 2. RECUPERAR CONTEXTO DOCUMENTAL Y OPERATIVO EN VIVO
     // -----------------------------------------------------------------------
     const { docs: matchedDocs, bestScore } = retrieveContext(cleanQuery, 3);
     const bestDoc = matchedDocs[0] || technicalDocuments[0];
 
     let visitsContext = '';
+    try {
+      const initialData = await getInitialDataAction();
+      const techsList = initialData.technicians
+        .map((t) => `- ${t.name} (Especialidad: ${t.specialty}, Email: ${t.email})`)
+        .join('\n');
+      const sitesList = initialData.sites
+        .map((s) => `- ${s.name} (${s.municipality}, ${s.address})`)
+        .join('\n');
+      const scheduledVisits = initialData.visits
+        .filter((v) => v.status === 'SCHEDULED')
+        .map(
+          (v) =>
+            `- ${v.date} [${v.startTime} - ${v.endTime}]: Técnico ${v.technician?.name || v.technicianId} en ${v.site?.name || v.siteId} (${v.notes || 'Sin notas'})`
+        )
+        .join('\n');
+
+      visitsContext = `PLANTILLA TÉCNICA OFICIAL:\n${techsList}\n\nOBRAS REGISTRADAS:\n${sitesList}\n\nAGENDA DE VISITAS PROGRAMADAS ACTIVAS:\n${scheduledVisits}`;
+    } catch {
+      visitsContext = `PLANTILLA TÉCNICA OFICIAL:\n${OFFICIAL_TECHNICIANS.map((name) => `- ${name}`).join('\n')}`;
+    }
 
     const contextText = matchedDocs
       .map((d) => `### [${d.id}] ${d.title} (Categoría: ${d.category})\n${d.content.trim()}`)
@@ -130,16 +171,18 @@ Tu misión es asistir a directores de obra, inspectores técnicos y coordinadore
 
 NORMAS ESTRICTAS DE RESPUESTA (GUARDARRAÍLES ANTI-ALUCINACIÓN):
 1. Idioma obligatorio: ${isCatalan ? 'CATALÀ' : 'ESPAÑOL'}.
-2. BASA TUS RESPUESTAS EXCLUSIVAMENTE en la DOCUMENTACIÓN TÉCNICA provista y en el contexto de visitas si aplica.
+2. BASA TUS RESPUESTAS EXCLUSIVAMENTE en la DOCUMENTACIÓN TÉCNICA provista y en el contexto operativo de visitas y técnicos si aplica.
 3. SI LA INFORMACIÓN SOLICITADA NO SE ENCUENTRA EN LA DOCUMENTACIÓN NI EN LOS REGISTROS, TIENES ESTRICTAMENTE PROHIBIDO INVENTAR O ESPECULAR.
-   En ese caso responde claramente que la información no figura en los procedimientos disponibles y menciona cuál es el más afín.
-4. Cita siempre el código de documento (ej. [DOC-01], [DOC-02]).
-5. Sé técnico, conciso y profesional.
+   En ese caso responde claramente: "${isCatalan ? "Aquesta informació no consta a la documentació tècnica interna ni als registres de la base de dades de l'empresa." : "Esta información no consta en la documentación técnica interna ni en los registros de la base de datos de la empresa."}"
+   PROHIBIDO CITAR O ASOCIAR PROCEDIMIENTOS AFINES SI NO RESPONDEN DIRECTAMENTE A LA PREGUNTA.
+4. Cita siempre el código de documento (ej. [DOC-01], [DOC-02]) cuando la información sí conste en la documentación técnica oficial.
+5. La plantilla oficial de técnicos homologados se compone ÚNICAMENTE de: ${OFFICIAL_TECHNICIANS.join(', ')}. Ninguna otra persona pertenece al equipo técnico.
+6. Sé técnico, conciso y profesional.
 
 DOCUMENTACIÓN TÉCNICA OFICIAL DISPONIBLE:
 ${contextText}
 
-${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}` : ''}
+${visitsContext ? `CONTEXTO OPERATIVO EN VIVO (TÉCNICOS, OBRAS Y VISITAS):\n${visitsContext}` : ''}
 `;
 
       try {
@@ -248,14 +291,14 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
     // -----------------------------------------------------------------------
     if (bestScore < 4) {
       const noInfoMsg = isCatalan
-        ? `Aquesta informació no consta a la documentació tècnica interna ni als registres de visites del laboratori.\n\nEl procediment més proper per àrea temàtica és **[${bestDoc.id}: ${bestDoc.title}]**, si bé no conté informació específica sobre la consulta formulada.`
-        : `Esta información no consta en la documentación técnica interna ni en los registros de visitas del laboratorio.\n\nEl procedimiento más cercano por área temática es **[${bestDoc.id}: ${bestDoc.title}]**, si bien no contiene información específica sobre la consulta planteada.`;
+        ? "Aquesta informació no consta a la documentació tècnica interna ni als registres de la base de dades de l'empresa."
+        : "Esta información no consta en la documentación técnica interna ni en los registros de la base de datos de la empresa.";
 
-      saveToCache(cleanQuery, language, noInfoMsg, [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }], 'local-rag');
+      saveToCache(cleanQuery, language, noInfoMsg, [], 'local-rag');
 
       const stream = createTextStream(
         noInfoMsg,
-        [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }],
+        [],
         'local-rag'
       );
 

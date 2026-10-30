@@ -12,7 +12,8 @@ const BASE_URL = 'http://localhost:3000';
 
 async function runE2ETests() {
   console.log('====================================================');
-  console.log('🚀 INICIANDO PRUEBAS END-TO-END DE NAVEGADOR WEB REAL');
+  console.log('🚀 FASE 3.B: VERIFICACIÓN END-TO-END EN NAVEGADOR REAL');
+  console.log('   (PLAYWRIGHT / CHROMIUM HEADLESS)');
   console.log(`🌐 URL Base: ${BASE_URL}`);
   console.log(`📁 Directorio de capturas: ${SCREENSHOTS_DIR}`);
   console.log('====================================================\n');
@@ -48,6 +49,8 @@ async function runE2ETests() {
     i18nSwitch: false,
     themeToggle: false,
     viewNavigation: false,
+    timelineLegendSpanishClean: false,
+    timelineLegendCatalanClean: false,
     timelineRails: false,
     timelineTravelBlocks: false,
     timelineCardExpansion: false,
@@ -57,7 +60,9 @@ async function runE2ETests() {
     scheduleModalClose: false,
     cancelVisitAction: false,
     copilotNoSseMention: false,
-    copilotTechnicalQuery: false,
+    copilotGuardrailAlvaro: false,
+    copilotGuardrailPaella: false,
+    copilotTechnicalAbrams: false,
     noConsoleErrors: false,
   };
 
@@ -65,7 +70,7 @@ async function runE2ETests() {
     // -------------------------------------------------------------------------
     // 1. CARGA Y RENDIMIENTO BASE
     // -------------------------------------------------------------------------
-    console.log('▶ [1/5] Verificando Carga Inicial y Selector de Idioma...');
+    console.log('▶ [1/6] Verificando Carga Inicial y Selector de Idioma...');
     const response = await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 15000 });
     
     if (response && response.status() === 200) {
@@ -113,25 +118,80 @@ async function runE2ETests() {
     console.log('  📸 Captura guardada: 01_base_load.png\n');
 
     // -------------------------------------------------------------------------
-    // 2. NAVEGACIÓN ENTRE VISTAS (TimelineView vs VisitsList)
+    // 2. AJUSTE VISUAL DE LEYENDA EN CRONOGRAMA (TimelineView)
     // -------------------------------------------------------------------------
-    console.log('▶ [2/5] Verificando Navegación entre Vistas (Cronograma vs Tarjetas)...');
+    console.log('▶ [2/6] Verificando Leyenda del Cronograma ("Traslado" / "Trasllat" sin "30m")...');
+    
+    // Asegurar vista de Cronograma
+    const timelineBtn = page.locator('header button:has(svg.lucide-calendar-range)').first();
+    await timelineBtn.click();
+    await page.waitForTimeout(300);
+
+    // A) En Español: Verificar leyenda superior
+    const legendSpanish = await page.evaluate(() => {
+      // Buscar contenedor de la leyenda superior en el encabezado del cronograma
+      const items = Array.from(document.querySelectorAll('div'));
+      for (const div of items) {
+        if (div.textContent?.includes('Programada') && (div.textContent?.includes('Traslado') || div.textContent?.includes('Cancelada'))) {
+          return div.textContent;
+        }
+      }
+      return '';
+    });
+
+    const hasTraslado = legendSpanish.includes('Traslado');
+    const hasNo30mSpanish = !legendSpanish.includes('30m');
+    console.log(`  ✔ Leyenda en Español contiene 'Traslado': ${hasTraslado}`);
+    console.log(`  ✔ Leyenda en Español NO contiene '30m': ${hasNo30mSpanish}`);
+    if (hasTraslado && hasNo30mSpanish) {
+      testResults.timelineLegendSpanishClean = true;
+    }
+
+    // B) En Catalán: Conmutar a CAT y verificar leyenda superior
+    await catBtn.click();
+    await page.waitForTimeout(300);
+
+    const legendCatalan = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll('div'));
+      for (const div of items) {
+        if (div.textContent?.includes('Programada') && (div.textContent?.includes('Trasllat') || div.textContent?.includes('Cancel·lada'))) {
+          return div.textContent;
+        }
+      }
+      return '';
+    });
+
+    const hasTrasllat = legendCatalan.includes('Trasllat');
+    const hasNo30mCatalan = !legendCatalan.includes('30m');
+    console.log(`  ✔ Leyenda en Catalán contiene 'Trasllat': ${hasTrasllat}`);
+    console.log(`  ✔ Leyenda en Catalán NO contiene '30m': ${hasNo30mCatalan}`);
+    if (hasTrasllat && hasNo30mCatalan) {
+      testResults.timelineLegendCatalanClean = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '03b_timeline_legend_clean.png'), fullPage: false });
+    console.log('  📸 Captura guardada: 03b_timeline_legend_clean.png');
+
+    // Regresar a Español para el resto de las pruebas
+    await esBtn.click();
+    await page.waitForTimeout(300);
+
+    // -------------------------------------------------------------------------
+    // 3. NAVEGACIÓN Y CRONOGRAMA OPERATIVO
+    // -------------------------------------------------------------------------
+    console.log('\n▶ [3/6] Verificando Navegación entre Vistas y Cronograma...');
     
     // Cambiar a vista de Tarjetas
     const cardsViewBtn = page.locator('header button:has(svg.lucide-layout-grid)').first();
     await cardsViewBtn.click();
     await page.waitForTimeout(400);
 
-    // Comprobar que renderiza las tarjetas de visitas
     const visitCardsCount = await page.locator('main').locator('text=Carlos Gómez').count();
     console.log(`  ✔ Vista Tarjetas activa: detectadas referencias de visitas (${visitCardsCount} técnicos)`);
-
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '02_cards_view.png'), fullPage: false });
-    console.log('  📸 Captura guardada: 02_cards_view.png');
 
     // Regresar a vista de Cronograma
-    const timelineViewBtn = page.locator('header button:has(svg.lucide-calendar-range)').first();
-    await timelineViewBtn.click();
+    await timelineBtn.click();
     await page.waitForTimeout(400);
 
     const timelineContainer = page.locator('text=08:00 – 17:00 h').first();
@@ -140,14 +200,6 @@ async function runE2ETests() {
     if (isTimelineVisible && visitCardsCount > 0) {
       testResults.viewNavigation = true;
     }
-
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '03_timeline_view.png'), fullPage: false });
-    console.log('  📸 Captura guardada: 03_timeline_view.png\n');
-
-    // -------------------------------------------------------------------------
-    // 3. PRUEBA DE CRONOGRAMA (TIMELINEVIEW)
-    // -------------------------------------------------------------------------
-    console.log('▶ [3/5] Verificando Carriles Horarios, Traslados y Hover con z-50...');
 
     // Verificar presencia de horas 08:00 a 17:00
     const hour08 = await page.locator('text=08:00').first().isVisible();
@@ -158,7 +210,6 @@ async function runE2ETests() {
     }
 
     // Verificar bloques de traslado dinámico (con icono de coche y minutos reales)
-    // Buscamos texto con patrón de minutos calculados (ej. "19m (14m + 5m)")
     const travelBlock = page.locator('div:has-text("19m (14m + 5m)")').first();
     const travelBlockVisible = await travelBlock.isVisible();
     console.log(`  ✔ Bloque de traslado dinámico detectado (19m = 14m conducción + 5m buffer): ${travelBlockVisible}`);
@@ -167,18 +218,15 @@ async function runE2ETests() {
     }
 
     // Interactuar con una tarjeta de visita: hacer hover
-    // Carlos Gómez tiene una visita a las 08:30–10:00 en Residencial Monte Rozas
     const visitCard = page.locator('text=08:30–10:00').first();
     await visitCard.scrollIntoViewIfNeeded();
     await visitCard.hover();
     await page.waitForTimeout(350);
 
-    // Comprobar que se expande con z-50 y el botón "Cancelar Visita" es visible
     const cancelBtn = page.locator('button:has-text("Cancelar Visita")').first();
     const isCancelVisible = await cancelBtn.isVisible();
     console.log(`  ✔ Tarjeta expandida con hover. Botón "Cancelar Visita" interactuable: ${isCancelVisible}`);
 
-    // Verificar clase z-50 en el contenedor activo
     const hasZ50 = await page.evaluate(() => {
       const activeEl = document.querySelector('.z-50');
       return activeEl !== null;
@@ -195,10 +243,9 @@ async function runE2ETests() {
     // -------------------------------------------------------------------------
     // 4. MODAL DE PROGRAMACIÓN Y TRASLADO DINÁMICO
     // -------------------------------------------------------------------------
-    console.log('▶ [4/5] Verificando Modal de Programación y Tarjeta de Traslado Dinámico...');
+    console.log('▶ [4/6] Verificando Modal de Programación y Tarjeta de Traslado Dinámico...');
 
-    // Abrir modal de Programar Visita
-    const scheduleBtn = page.locator('header button:has-text("Programar Visita")');
+    const scheduleBtn = page.locator('header button:has(svg.lucide-plus)').first();
     await scheduleBtn.click();
     await page.waitForTimeout(400);
 
@@ -209,12 +256,9 @@ async function runE2ETests() {
 
     // Caso A: Seleccionar Carlos Gómez, Pozuelo de Alarcón a las 10:10 (Margen insuficiente: 10 min < 19 min)
     console.log('  Configurando caso de prueba: Margen insuficiente (10:10 h, gap = 10 min vs 19 min req)...');
-    
-    // Seleccionar primer técnico (Carlos Gómez) por índice
     const techSelect = page.locator('form select').nth(0);
     await techSelect.selectOption({ index: 0 });
     
-    // Seleccionar obra en Pozuelo de Alarcón
     const siteSelect = page.locator('form select').nth(1);
     const siteOptions = await siteSelect.locator('option').all();
     for (const opt of siteOptions) {
@@ -226,17 +270,14 @@ async function runE2ETests() {
       }
     }
 
-    // Configurar hora de inicio a 10:10 (visita anterior termina a las 10:00 -> solo 10m de margen)
     const timeInput = page.locator('form input[type="time"]');
     await timeInput.fill('10:10');
     await page.waitForTimeout(400);
 
-    // Verificar aparición de la Tarjeta de Ruta y Traslado Dinámico con margen insuficiente
     const insufficientBadge = page.locator('text=Margen de traslado insuficiente').first();
     const isInsufficientVisible = await insufficientBadge.isVisible();
     console.log(`  ✔ Detección de margen insuficiente en Tarjeta Dinámica: ${isInsufficientVisible}`);
 
-    // Verificar desglose: 14 min Conducción + 5 min
     const travelDetails = await page.locator('text=14 min').first().isVisible();
     console.log(`  ✔ Desglose de ruta visualizado (14 min conducción + 5 min margen): ${travelDetails}`);
 
@@ -263,7 +304,7 @@ async function runE2ETests() {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '06_modal_travel_sufficient.png'), fullPage: false });
     console.log('  📸 Captura guardada: 06_modal_travel_sufficient.png');
 
-    // Probar cierre de modal mediante tecla Escape
+    // Cierre con Escape
     console.log('  Probando cierre de modal mediante tecla Escape...');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(400);
@@ -275,10 +316,8 @@ async function runE2ETests() {
     await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '07_modal_closed.png'), fullPage: false });
     console.log('  📸 Captura guardada: 07_modal_closed.png\n');
 
-    // -------------------------------------------------------------------------
-    // 4b. PRUEBA DE CANCELACIÓN DE VISITA (Optimistic UI y Liberación Horaria)
-    // -------------------------------------------------------------------------
-    console.log('▶ [4b] Verificando Cancelación de Visita y Liberación de Horario...');
+    // Cancelación optimista de una visita
+    console.log('  Probando cancelación de visita y liberación de horario...');
     const sofiaVisit = page.locator('text=14:00–16:00').first();
     if (await sofiaVisit.isVisible()) {
       await sofiaVisit.click();
@@ -294,13 +333,11 @@ async function runE2ETests() {
     } else {
       testResults.cancelVisitAction = true;
     }
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '07b_visit_cancelled.png'), fullPage: false });
-    console.log('  📸 Captura guardada: 07b_visit_cancelled.png\n');
 
     // -------------------------------------------------------------------------
-    // 5. PRUEBA DEL ASISTENTE TÉCNICO (COPILOTPANEL)
+    // 5. VALIDACIÓN DE GUARDARRAÍLES DE LABQA COPILOT
     // -------------------------------------------------------------------------
-    console.log('▶ [5/5] Verificando LabQA Copilot (Sin mención de STREAM SSE y Respuesta en Vivo)...');
+    console.log('\n▶ [5/6] Verificando Guardarraíles Estrictos de LabQA Copilot...');
 
     // Comprobar que en el DOM del Copilot NO aparece "STREAM SSE" ni "SSE"
     const copilotText = await page.locator('aside').textContent();
@@ -310,50 +347,172 @@ async function runE2ETests() {
       testResults.copilotNoSseMention = true;
     }
 
-    // Enviar pregunta técnica sobre el Cono de Abrams
-    console.log('  Enviando consulta técnica: "¿Cómo se realiza el ensayo del Cono de Abrams?"...');
     const copilotInput = page.locator('aside input[type="text"]');
-    await copilotInput.fill('¿Cómo se realiza el ensayo del Cono de Abrams?');
-    await page.locator('aside button[type="submit"]').click();
+    const sendBtn = page.locator('aside button[type="submit"]');
 
-    // Esperar respuesta técnica del Copilot (máx 15s para streaming/RAG)
-    console.log('  Esperando flujo de respuesta del asistente...');
+    // -------------------------------------------------------------------------
+    // PRUEBA 1: Trabajador Ficticio / No en Plantilla ("Álvaro")
+    // -------------------------------------------------------------------------
+    console.log('\n  [Guardarraíl 1/3] Consulta sobre persona ficticia: "¿cuánto tardará Álvaro en llegar a su siguiente trabajo?"');
+    await copilotInput.fill('¿cuánto tardará Álvaro en llegar a su siguiente trabajo?');
+    await sendBtn.click();
+
+    // Esperar a que el texto contenga el final del stream y el input vuelva a habilitarse
     await page.waitForFunction(
       () => {
-        const botMessages = document.querySelectorAll('aside p');
-        for (const p of botMessages) {
-          const text = p.textContent || '';
-          if (text.includes('12350-2') || text.includes('Abrams') || text.includes('asentamiento') || text.includes('molde') || text.includes('consistencia')) {
-            return true;
-          }
-        }
-        return false;
+        const botMessages = Array.from(document.querySelectorAll('aside p'));
+        return botMessages.some((p) => p.textContent.includes('Navarro'));
+      },
+      { timeout: 12000 }
+    );
+    await page.waitForFunction(
+      () => {
+        const inp = document.querySelector('aside input[type="text"]');
+        return inp && !inp.hasAttribute('disabled');
+      },
+      { timeout: 10000 }
+    );
+
+    // Validar contenido estricto de la respuesta de Álvaro
+    const alvaroEvaluation = await page.evaluate(() => {
+      const ps = Array.from(document.querySelectorAll('aside p'));
+      const targetP = ps.find((p) => p.textContent.includes('Navarro'));
+      const text = targetP?.textContent || '';
+      const container = targetP ? targetP.closest('.rounded-2xl') : null;
+      
+      const mentionsNotStaff = text.includes('no forma parte del equipo técnico de la empresa');
+      const mentionsOfficialTeam =
+        text.includes('Carlos Gómez') &&
+        text.includes('Laura Martín') &&
+        text.includes('Alejandro Ruiz') &&
+        text.includes('Sofía Navarro');
+
+      const hasSourcesBlock = container?.querySelector('.lucide-book-open') !== null;
+      const hasDocPills = text.includes('DOC-');
+
+      return {
+        text,
+        mentionsNotStaff,
+        mentionsOfficialTeam,
+        hasSources: hasSourcesBlock || hasDocPills,
+      };
+    });
+
+    console.log(`    ✔ Indica explícitamente que no forma parte del equipo: ${alvaroEvaluation.mentionsNotStaff}`);
+    console.log(`    ✔ Enumera la plantilla oficial completa (Carlos, Laura, Alejandro, Sofía): ${alvaroEvaluation.mentionsOfficialTeam}`);
+    console.log(`    ✔ NO incluye ningún procedimiento técnico (sources = []): ${!alvaroEvaluation.hasSources}`);
+
+    if (alvaroEvaluation.mentionsNotStaff && alvaroEvaluation.mentionsOfficialTeam && !alvaroEvaluation.hasSources) {
+      testResults.copilotGuardrailAlvaro = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '09_copilot_guardrail_alvaro.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 09_copilot_guardrail_alvaro.png');
+
+    // -------------------------------------------------------------------------
+    // PRUEBA 2: Pregunta Fuera de Dominio / Aleatoria ("Paella Valenciana")
+    // -------------------------------------------------------------------------
+    console.log('\n  [Guardarraíl 2/3] Consulta fuera de dominio: "¿Cuál es la receta de la paella valenciana?"');
+    await copilotInput.fill('¿Cuál es la receta de la paella valenciana?');
+    await sendBtn.click();
+
+    await page.waitForFunction(
+      () => {
+        const botMessages = Array.from(document.querySelectorAll('aside p'));
+        return botMessages.some((p) => p.textContent.includes('empresa.'));
+      },
+      { timeout: 12000 }
+    );
+    await page.waitForFunction(
+      () => {
+        const inp = document.querySelector('aside input[type="text"]');
+        return inp && !inp.hasAttribute('disabled');
+      },
+      { timeout: 10000 }
+    );
+
+    const paellaEvaluation = await page.evaluate(() => {
+      const ps = Array.from(document.querySelectorAll('aside p'));
+      const targetP = ps.find((p) => p.textContent.includes('Esta información no consta'));
+      const text = targetP?.textContent || '';
+      const container = targetP ? targetP.closest('.rounded-2xl') : null;
+      
+      const isCleanOutOfDomainAnswer = text.includes('Esta información no consta en la documentación técnica interna ni en los registros de la base de datos de la empresa.');
+      const hasSourcesBlock = container?.querySelector('.lucide-book-open') !== null;
+      const hasDocPills = text.includes('DOC-');
+
+      return {
+        text,
+        isCleanOutOfDomainAnswer,
+        hasSources: hasSourcesBlock || hasDocPills,
+      };
+    });
+
+    console.log(`    ✔ Respuesta limpia y a secas de "no consta": ${paellaEvaluation.isCleanOutOfDomainAnswer}`);
+    console.log(`    ✔ Cero fuentes documentales inventadas (sources = []): ${!paellaEvaluation.hasSources}`);
+
+    if (paellaEvaluation.isCleanOutOfDomainAnswer && !paellaEvaluation.hasSources) {
+      testResults.copilotGuardrailPaella = true;
+    }
+
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '10_copilot_guardrail_paella.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 10_copilot_guardrail_paella.png');
+
+    // -------------------------------------------------------------------------
+    // PRUEBA 3: Consulta Técnica Legítima ("Cono de Abrams")
+    // -------------------------------------------------------------------------
+    console.log('\n  [Guardarraíl 3/3] Consulta técnica legítima: "¿Cómo se realiza el cono de Abrams?"');
+    await copilotInput.fill('¿Cómo se realiza el cono de Abrams?');
+    await sendBtn.click();
+
+    await page.waitForFunction(
+      () => {
+        const botMessages = Array.from(document.querySelectorAll('aside p'));
+        return botMessages.some((p) => p.textContent.includes('12350-2') && p.textContent.includes('asentamiento'));
       },
       { timeout: 15000 }
     );
+    await page.waitForFunction(
+      () => {
+        const inp = document.querySelector('aside input[type="text"]');
+        return inp && !inp.hasAttribute('disabled');
+      },
+      { timeout: 10000 }
+    );
 
-    // Verificar insignia del proveedor de IA (Caché Semántica / Gemini / Base Local)
-    const providerBadge = await page.evaluate(() => {
-      const badges = document.querySelectorAll('aside span');
-      for (const b of badges) {
-        const text = b.textContent?.trim().toUpperCase() || '';
-        if (text === 'CACHÉ SEMÁNTICA' || text === 'CACHÉ SEMÀNTICA' || text === 'GEMINI' || text === 'BASE LOCAL') {
-          return text;
-        }
-      }
-      return null;
+    const abramsEvaluation = await page.evaluate(() => {
+      const ps = Array.from(document.querySelectorAll('aside p'));
+      const targetP = ps.find((p) => p.textContent.includes('12350-2'));
+      const text = targetP?.textContent || '';
+      const container = targetP ? targetP.closest('.rounded-2xl') : null;
+      
+      const citesNorm = text.includes('12350-2');
+      const citesDoc = text.includes('DOC-01');
+      const hasSources = container?.querySelector('.lucide-book-open') !== null || text.includes('DOC-01');
+
+      return {
+        text,
+        citesNorm,
+        citesDoc,
+        hasSources,
+      };
     });
 
-    console.log(`  ✔ Respuesta técnica recibida exitosamente. Proveedor/Insignia: [${providerBadge || 'Detectado'}]`);
-    if (providerBadge || true) {
-      testResults.copilotTechnicalQuery = true;
+    console.log(`    ✔ Cita explícitamente norma UNE-EN 12350-2: ${abramsEvaluation.citesNorm}`);
+    console.log(`    ✔ Cita código de documento oficial [DOC-01]: ${abramsEvaluation.citesDoc}`);
+    console.log(`    ✔ Incluye bloque de fuentes y estándares técnicos: ${abramsEvaluation.hasSources}`);
+
+    if (abramsEvaluation.citesNorm && abramsEvaluation.citesDoc) {
+      testResults.copilotTechnicalAbrams = true;
     }
 
-    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '08_copilot_response.png'), fullPage: false });
-    console.log('  📸 Captura guardada: 08_copilot_response.png\n');
+    await page.screenshot({ path: path.join(SCREENSHOTS_DIR, '11_copilot_technical_abrams.png'), fullPage: false });
+    console.log('    📸 Captura guardada: 11_copilot_technical_abrams.png\n');
 
-    // Verificación final de consola
-    console.log('--- Resumen de Consola del Navegador ---');
+    // -------------------------------------------------------------------------
+    // 6. RESUMEN DE CONSOLA DEL NAVEGADOR
+    // -------------------------------------------------------------------------
+    console.log('▶ [6/6] Verificando Consola del Navegador Web...');
     console.log(`  Errores en consola: ${consoleErrors.length}`);
     if (consoleErrors.length > 0) {
       console.log('  Detalle de errores:', consoleErrors);
@@ -369,7 +528,7 @@ async function runE2ETests() {
   }
 
   console.log('\n====================================================');
-  console.log('📊 REPORTE DE RESULTADOS DE PRUEBAS E2E:');
+  console.log('📊 REPORTE DE RESULTADOS FASE 3.B (PLAYWRIGHT E2E):');
   console.log('====================================================');
   let passedCount = 0;
   let totalCount = 0;

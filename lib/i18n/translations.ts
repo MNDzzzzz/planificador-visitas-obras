@@ -55,9 +55,9 @@ export const translations = {
     noVisitsTitle: 'Cap visita programada',
     noVisitsDesc: 'No hi ha visites per als filtres seleccionats. Pots programar la primera inspecció ara.',
     timelineTitle: 'Cronograma Operatiu d\'Inspeccions',
-    timelineSubtitle: 'Visualització gràfica d\'ocupació per tècnic i blocs de trasllat obligatori (30 min)',
-    travelBlockLabel: '30m trasllat',
-    travelBlockTooltip: 'Trasllat obligatori de 30 min entre obres diferents',
+    timelineSubtitle: 'Visualització gràfica d\'ocupació per tècnic i blocs de trasllat',
+    travelBlockLabel: 'Trasllat',
+    travelBlockTooltip: 'Temps de trasllat calculat segons ruta entre obres diferents',
     viewDetailsHint: 'Passa el cursor per veure tots els detalls',
 
     // Modal Programar
@@ -165,9 +165,9 @@ export const translations = {
     noVisitsTitle: 'Ninguna visita programada',
     noVisitsDesc: 'No hay visitas para los filtros seleccionados. Puedes programar la primera inspección ahora.',
     timelineTitle: 'Cronograma Operativo de Inspecciones',
-    timelineSubtitle: 'Visualización gráfica de ocupación por técnico y bloques de traslado obligatorio (30 min)',
-    travelBlockLabel: '30m traslado',
-    travelBlockTooltip: 'Traslado obligatorio de 30 min entre obras distintas',
+    timelineSubtitle: 'Visualización gráfica de ocupación por técnico y bloques de traslado',
+    travelBlockLabel: 'Traslado',
+    travelBlockTooltip: 'Tiempo de traslado calculado según ruta entre obras distintas',
     viewDetailsHint: 'Pasa el ratón para ver todos los detalles',
 
     // Modal Programar

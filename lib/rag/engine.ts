@@ -1,5 +1,6 @@
 import { technicalDocuments, DocumentSection } from './knowledge';
 import { findInCache, saveToCache } from './cache';
+import { evaluateGuardrails, OFFICIAL_TECHNICIANS } from './guardrails';
 
 export interface RagResponse {
   answer: string;
@@ -88,6 +89,16 @@ export async function askLabQACopilot({
   language?: 'ca' | 'es';
   visitsContext?: string;
 }): Promise<RagResponse> {
+  // 0. Guardarraíles anti-alucinación inmediatos (Prioridad 0: Blindaje Estricto)
+  const guardrail = evaluateGuardrails(query, language);
+  if (guardrail && guardrail.isIntercepted) {
+    return {
+      answer: guardrail.answer,
+      sources: guardrail.sources,
+      provider: 'local-rag',
+    };
+  }
+
   // 1. Consultar caché exacta y semántica en primer lugar
   const cached = findInCache(query, language);
   if (cached) {
@@ -125,10 +136,11 @@ NORMAS ESTRICTAS DE RESPUESTA (GUARDARRAÍLES ANTI-ALUCINACIÓN):
 2. BASA TUS RESPUESTAS EXCLUSIVAMENTE en la DOCUMENTACIÓN TÉCNICA provista a continuación y en el contexto de visitas si aplica.
 3. SI LA INFORMACIÓN SOLICITADA NO SE ENCUENTRA EN LA DOCUMENTACIÓN NI EN LOS REGISTROS, TIENES ESTRICTAMENTE PROHIBIDO INVENTAR O ESPECULAR.
    En ese caso, responde claramente:
-   "${isCatalan ? 'Aquesta informació no consta a la documentació tècnica ni als registres del sistema.' : 'Esta información no consta en la documentación técnica ni en los registros del sistema.'}"
-   Y añade si procede el documento más cercano temáticamente (ej. [DOC-01: ...]), aclarando que no resuelve la cuestión planteada.
-4. Cita siempre el código de documento (ej. [DOC-01], [DOC-02]).
-5. Sé técnico, conciso y profesional.
+   "${isCatalan ? "Aquesta informació no consta a la documentació tècnica interna ni als registres de la base de dades de l'empresa." : "Esta información no consta en la documentación técnica interna ni en los registros de la base de datos de la empresa."}"
+   PROHIBIDO CITAR O ASOCIAR PROCEDIMIENTOS AFINES SI NO RESPONDEN DIRECTAMENTE A LA PREGUNTA.
+4. Cita siempre el código de documento (ej. [DOC-01], [DOC-02]) cuando la información sí conste en la documentación técnica oficial.
+5. La plantilla oficial de técnicos homologados se compone ÚNICAMENTE de: ${OFFICIAL_TECHNICIANS.join(', ')}. Ninguna otra persona pertenece al equipo.
+6. Sé técnico, conciso y profesional.
 
 DOCUMENTACIÓN TÉCNICA OFICIAL DISPONIBLE:
 ${contextText}
@@ -195,13 +207,13 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
   // 3. Fallback Local con Guardarraíl o Respuesta Estructurada
   if (bestScore < 4) {
     const noInfoMsg = isCatalan
-      ? `Aquesta informació no consta a la documentació tècnica interna ni als registres de visites del laboratori.\n\nEl procediment més proper per àrea temàtica és **[${bestDoc.id}: ${bestDoc.title}]**, si bé no conté informació específica sobre la consulta formulada.`
-      : `Esta información no consta en la documentación técnica interna ni en los registros de visitas del laboratorio.\n\nEl procedimiento más cercano por área temática es **[${bestDoc.id}: ${bestDoc.title}]**, si bien no contiene información específica sobre la consulta planteada.`;
+      ? "Aquesta informació no consta a la documentació tècnica interna ni als registres de la base de dades de l'empresa."
+      : "Esta información no consta en la documentación técnica interna ni en los registros de la base de datos de la empresa.";
 
-    saveToCache(query, language, noInfoMsg, [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }], 'local-rag');
+    saveToCache(query, language, noInfoMsg, [], 'local-rag');
     return {
       answer: noInfoMsg,
-      sources: [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }],
+      sources: [],
       provider: 'local-rag',
     };
   }

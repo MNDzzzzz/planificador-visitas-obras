@@ -113,11 +113,15 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
               const parsed = JSON.parse(dataStr);
 
               // Metadatos iniciales (fuentes y proveedor)
-              if (parsed.sources) {
+              if (parsed.sources !== undefined || parsed.provider) {
                 setMessages((prev) =>
                   prev.map((m) =>
                     m.id === assistantMsgId
-                      ? { ...m, sources: parsed.sources, provider: parsed.provider }
+                      ? {
+                          ...m,
+                          sources: Array.isArray(parsed.sources) && parsed.sources.length > 0 ? parsed.sources : m.sources,
+                          provider: parsed.provider || m.provider,
+                        }
                       : m
                   )
                 );
@@ -281,15 +285,15 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
                     <span className="inline-block w-2 h-3.5 ml-1 bg-[#2997FF] animate-pulse align-middle" />
                   )}
 
-                  {/* Fuentes / Citas Documentales */}
-                  {msg.sources && msg.sources.length > 0 && (
+                  {/* Fuentes / Citas Documentales (solo si existen fuentes válidas) */}
+                  {Array.isArray(msg.sources) && msg.sources.filter(Boolean).length > 0 && (
                     <div className="mt-2.5 pt-2 border-t border-[var(--border-subtle)] space-y-1">
                       <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider flex items-center gap-1">
                         <BookOpen className="w-3 h-3 text-[#2997FF]" />
                         <span>{t.copilotStandardsTitle}</span>
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        {msg.sources.map((s) => (
+                        {msg.sources.filter(Boolean).map((s) => (
                           <span
                             key={s.id}
                             className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#2997FF]/10 text-[#2997FF] border border-[#2997FF]/25 truncate max-w-[240px]"
@@ -302,12 +306,12 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
                     </div>
                   )}
 
-                  <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--text-tertiary)] pt-0.5">
+                  <div className="mt-1.5 flex items-center justify-between text-[10px] text-[var(--text-tertiary)] pt-0.5">
                     <span>{msg.timestamp}</span>
                     {msg.provider && (
-                      <span className="font-mono text-[9px] uppercase font-semibold opacity-80">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-white/[0.04] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
                         {msg.provider === 'gemini'
-                          ? 'Gemini'
+                          ? 'Gemini 2.5'
                           : msg.provider === 'cache'
                           ? language === 'ca'
                             ? 'Caché Semàntica'
