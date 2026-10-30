@@ -180,7 +180,10 @@ async function isDatabaseAvailable(): Promise<boolean> {
   }
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('DB Connection Timeout')), 600)
+    );
+    await Promise.race([prisma.$queryRaw`SELECT 1`, timeoutPromise]);
     dbAvailableCache = true;
     lastCheckTime = now;
     return true;

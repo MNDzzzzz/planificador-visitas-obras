@@ -35,6 +35,26 @@ export const N8NModal: React.FC<N8NModalProps> = ({
   const [activeStep, setActiveStep] = useState<number>(0);
   const [webhookUrl, setWebhookUrl] = useState('https://n8n.qualitat-lab.internal/webhook/control-visites');
 
+  // Gestión de accesibilidad: tecla Escape y bloqueo de scroll de fondo
+  React.useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const mockPayload = {

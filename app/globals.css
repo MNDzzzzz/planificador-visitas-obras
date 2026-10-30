@@ -59,9 +59,18 @@
   }
 }
 
-/* Tipografía y Números Tabulares */
+/* Tipografía y Números Tabulares (Skill: make-interfaces-feel-better) */
 .tabular-numbers {
   font-variant-numeric: tabular-nums;
+}
+
+/* Text-wrap de alta legibilidad */
+h1, h2, h3, h4 {
+  text-wrap: balance;
+}
+
+p, label {
+  text-wrap: pretty;
 }
 
 /* Microinteracciones Físicas Táctiles (Skill: apple-design) */
@@ -79,6 +88,12 @@
 .min-hit-area {
   min-height: 40px;
   min-width: 40px;
+}
+
+/* Anillos de foco accesibles */
+:focus-visible {
+  outline: 2px solid #2997ff;
+  outline-offset: 2px;
 }
 
 /* Materiales Translúcidos Apple Glass adaptativos */
@@ -132,4 +147,26 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.6);
+}
+
+/* Ocultar barra en contenedores de pills */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Accesibilidad: Reducción de Movimiento */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .apple-press:active {
+    transform: none !important;
+  }
 }

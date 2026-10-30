@@ -87,12 +87,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
         </div>
       </div>
 
-      {/* Grid Container */}
+      {/* Grid Container con eje horario sticky */}
       <div className="overflow-x-auto">
         <div className="min-w-[800px] p-4 flex">
-          {/* Eje de Horas Vertical (08:00 a 17:00) */}
+          {/* Eje de Horas Vertical Sticky (08:00 a 17:00) */}
           <div
-            className="w-16 shrink-0 relative pr-2 border-r border-[var(--border-subtle)]"
+            className="w-16 shrink-0 sticky left-0 z-20 pr-2 border-r border-[var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur-md shadow-sm"
             style={{ height: `${TOTAL_HEIGHT}px` }}
           >
             {HOURS.map((hour) => {
@@ -103,7 +103,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                   className="absolute w-full flex items-center justify-end pr-2 text-right -translate-y-2"
                   style={{ top: `${topPos}px` }}
                 >
-                  <span className="text-[11px] font-mono text-[var(--text-secondary)] tabular-numbers font-medium">
+                  <span className="text-[11px] font-mono text-[var(--text-secondary)] tabular-numbers font-semibold">
                     {hour.toString().padStart(2, '0')}:00
                   </span>
                 </div>
@@ -195,21 +195,65 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                         }}
                         title={`Traslado obligatorio de 30 min entre ${tb.prevSite} y ${tb.nextSite}`}
                       >
-                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-mono font-medium flex items-center gap-1 bg-[var(--bg-card)]/90 px-1.5 py-0.5 rounded shadow-sm">
+                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-mono font-semibold flex items-center gap-1 bg-[var(--bg-card)]/90 px-1.5 py-0.5 rounded shadow-sm">
                           <Car className="w-2.5 h-2.5 text-amber-500" />
                           <span>30m trasllat</span>
                         </span>
                       </div>
                     ))}
 
-                    {/* Bloques de Visita */}
+                    {/* Bloques de Visita con Densidad Adaptativa */}
                     {techVisits.map((visit) => {
                       const startMins = timeToMinutes(visit.startTime);
                       const duration = visit.durationMinutes;
                       const topPos = (startMins - START_MINUTE) * PIXELS_PER_MINUTE;
                       const heightPx = duration * PIXELS_PER_MINUTE;
                       const isCancelled = visit.status === 'CANCELLED';
+                      const isShort = duration <= 35;
 
+                      if (isShort) {
+                        // Layout compacto horizontal de 1 sola línea para visitas cortas (30 min)
+                        return (
+                          <div
+                            key={visit.id}
+                            className={`absolute left-1.5 right-1.5 rounded-lg border px-2 py-1 flex items-center justify-between transition-all duration-150 z-10 overflow-hidden ${
+                              isCancelled
+                                ? 'bg-[var(--bg-card)]/60 border-dashed border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-60'
+                                : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-primary)] hover:border-[#2997FF]/50 shadow-sm'
+                            }`}
+                            style={{
+                              top: `${topPos}px`,
+                              height: `${Math.max(heightPx, 32)}px`,
+                              borderLeftWidth: isCancelled ? '1px' : '3px',
+                              borderLeftColor: isCancelled ? 'var(--border-subtle)' : tech.color,
+                            }}
+                            title={`${visit.startTime}–${visit.endTime}: ${visit.site?.name || 'Obra'} (${visit.site?.municipality || 'Sede'})`}
+                          >
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <span className="text-[10px] font-mono font-bold tabular-numbers shrink-0">
+                                {visit.startTime}
+                              </span>
+                              <span className="text-[11px] font-semibold text-[var(--text-primary)] truncate">
+                                {visit.site?.name || 'Obra'}
+                              </span>
+                            </div>
+                            {!isCancelled && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onCancelVisit(visit.id);
+                                }}
+                                title={t.cancelActionBtn}
+                                className="text-[10px] text-[var(--text-secondary)] hover:text-rose-500 transition-colors p-0.5 rounded cursor-pointer ml-1 shrink-0"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      // Layout estándar para visitas de 45 min o más
                       return (
                         <div
                           key={visit.id}

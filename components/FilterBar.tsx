@@ -36,7 +36,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const hasActiveFilters = selectedTechId !== '' || selectedDate !== '' || selectedStatus !== 'ALL' || searchQuery.trim() !== '';
 
   return (
-    <div className="w-full bg-[var(--bg-card)] rounded-2xl p-3.5 sm:p-4 border border-[var(--border-subtle)] shadow-sm backdrop-blur-xl">
+    <div className="w-full bg-[var(--bg-card)] rounded-[22px] p-3.5 sm:p-4 border border-[var(--border-subtle)] shadow-sm backdrop-blur-xl">
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
         
         {/* Fila 1: Filtro de Técnico y Búsqueda */}

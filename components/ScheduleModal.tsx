@@ -73,14 +73,31 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     };
   } | null>(null);
 
-  // Sincronizar defaults al abrir
+  // Sincronizar defaults al abrir y gestionar accesibilidad (Escape y scroll lock)
   useEffect(() => {
     if (isOpen) {
       if (defaultTechnicianId) setTechnicianId(defaultTechnicianId);
       if (defaultDate) setDate(defaultDate);
       setServerError(null);
+
+      // Bloquear scroll de fondo
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+
+      // Capturar tecla Escape
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-  }, [isOpen, defaultTechnicianId, defaultDate]);
+  }, [isOpen, defaultTechnicianId, defaultDate, onClose]);
 
   if (!isOpen) return null;
 
