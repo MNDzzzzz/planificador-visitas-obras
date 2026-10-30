@@ -14,6 +14,7 @@ async function main() {
   // 1. Crear los 4 Técnicos de la empresa
   const techniciansData = [
     {
+      id: 'tech-carlos',
       name: 'Carlos Gómez',
       email: 'carlos.gomez@obrasmadrid.es',
       phone: '+34 611 223 344',
@@ -21,6 +22,7 @@ async function main() {
       color: '#3B82F6', // Azul Apple
     },
     {
+      id: 'tech-laura',
       name: 'Laura Martín',
       email: 'laura.martin@obrasmadrid.es',
       phone: '+34 622 334 455',
@@ -28,6 +30,7 @@ async function main() {
       color: '#10B981', // Verde Esmeralda Apple
     },
     {
+      id: 'tech-alejandro',
       name: 'Alejandro Ruiz',
       email: 'alejandro.ruiz@obrasmadrid.es',
       phone: '+34 633 445 566',
@@ -35,6 +38,7 @@ async function main() {
       color: '#F59E0B', // Ámbar Apple
     },
     {
+      id: 'tech-sofia',
       name: 'Sofía Navarro',
       email: 'sofia.navarro@obrasmadrid.es',
       phone: '+34 644 556 677',

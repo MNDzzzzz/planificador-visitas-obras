@@ -514,6 +514,15 @@ export async function cancelVisitAction(visitId: string): Promise<ActionResult<V
     }
   } catch (err: unknown) {
     console.error('Error al cancelar la visita:', err);
+    const isNotFound =
+      (typeof err === 'object' && err !== null && 'code' in err && (err as { code: string }).code === 'P2025') ||
+      (err instanceof Error && err.message.toLowerCase().includes('not found'));
+    if (isNotFound) {
+      return {
+        success: false,
+        error: 'Visita no encontrada en la base de datos.',
+      };
+    }
     const errorMessage =
       err instanceof Error ? err.message : 'Error desconocido al cancelar la visita.';
     return {
