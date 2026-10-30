@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { officialSites } from '../lib/geo/routing';
 
 const prisma = new PrismaClient();
 
@@ -49,55 +50,37 @@ async function main() {
   }
   console.log(`✅ ${createdTechs.length} técnicos creados exitosamente.`);
 
-  // 2. Crear las 6 Obras distribuidas en municipios de la Comunidad de Madrid
-  const sitesData = [
-    {
-      name: 'Residencial Monte Rozas',
-      municipality: 'Las Rozas de Madrid',
-      address: 'Calle Camilo José Cela 14',
-    },
-    {
-      name: 'Polígono Logístico Los Gavilanes',
-      municipality: 'Getafe',
-      address: 'Avenida de las Trece Rosas 8',
-    },
-    {
-      name: 'Edificio Sanitario Norte',
-      municipality: 'Alcobendas',
-      address: 'Paseo de la Chopera 45',
-    },
-    {
-      name: 'Parque Empresarial Mirador',
-      municipality: 'Pozuelo de Alarcón',
-      address: 'Vía de las Dos Castillas 33',
-    },
-    {
-      name: 'Rehabilitación Edificio Siglo XVIII',
-      municipality: 'Alcalá de Henares',
-      address: 'Calle Mayor 62',
-    },
-    {
-      name: 'Centro Tecnológico Infantas',
-      municipality: 'San Sebastián de los Reyes',
-      address: 'Avenida de Europa 12',
-    },
-  ];
-
+  // 2. Crear las 13 Obras Oficiales con Georreferenciación GPS
   const createdSites = [];
-  for (const site of sitesData) {
-    const created = await prisma.site.create({ data: site });
+  for (const site of officialSites) {
+    const created = await prisma.site.create({
+      data: {
+        id: site.id,
+        name: site.name,
+        municipality: site.municipality,
+        address: site.address,
+        latitude: site.latitude ?? null,
+        longitude: site.longitude ?? null,
+      },
+    });
     createdSites.push(created);
   }
-  console.log(`✅ ${createdSites.length} obras creadas exitosamente.`);
+  console.log(`✅ ${createdSites.length} obras oficiales georreferenciadas creadas exitosamente.`);
 
   // 3. Crear visitas de ejemplo realistas
-  // Usamos la fecha de hoy en formato YYYY-MM-DD
   const today = new Date().toISOString().split('T')[0];
+
+  const siteRozas = createdSites.find((s) => s.municipality === 'Las Rozas de Madrid') || createdSites[0];
+  const sitePozuelo = createdSites.find((s) => s.municipality === 'Pozuelo de Alarcón') || createdSites[1];
+  const siteGetafe = createdSites.find((s) => s.municipality === 'Getafe') || createdSites[2];
+  const siteAlcobendas = createdSites.find((s) => s.municipality === 'Alcobendas') || createdSites[3];
+  const siteAlcala = createdSites.find((s) => s.municipality === 'Alcalá de Henares') || createdSites[4];
+  const siteSanSe = createdSites.find((s) => s.municipality === 'San Sebastián de los Reyes') || createdSites[5];
 
   const visitsData = [
     {
       technicianId: createdTechs[0].id, // Carlos Gómez
-      siteId: createdSites[0].id, // Residencial Monte Rozas
+      siteId: siteRozas.id,
       date: today,
       startTime: '08:30',
       durationMinutes: 90,
@@ -107,9 +90,9 @@ async function main() {
     },
     {
       technicianId: createdTechs[0].id, // Carlos Gómez
-      siteId: createdSites[3].id, // Pozuelo (diferente obra -> requiere >= 30 min)
+      siteId: sitePozuelo.id, // Diferente obra -> requiere tiempo de traslado
       date: today,
-      startTime: '11:00', // Margen de 60 min (cumple >= 30 min)
+      startTime: '11:00', // Margen de 60 min (cumple holgadamente)
       durationMinutes: 120,
       endTime: '13:00',
       status: 'SCHEDULED' as const,
@@ -117,7 +100,7 @@ async function main() {
     },
     {
       technicianId: createdTechs[1].id, // Laura Martín
-      siteId: createdSites[1].id, // Getafe
+      siteId: siteGetafe.id,
       date: today,
       startTime: '09:00',
       durationMinutes: 60,
@@ -127,7 +110,7 @@ async function main() {
     },
     {
       technicianId: createdTechs[1].id, // Laura Martín
-      siteId: createdSites[2].id, // Alcobendas
+      siteId: siteAlcobendas.id,
       date: today,
       startTime: '10:15',
       durationMinutes: 45,
@@ -137,7 +120,7 @@ async function main() {
     },
     {
       technicianId: createdTechs[2].id, // Alejandro Ruiz
-      siteId: createdSites[4].id, // Alcalá
+      siteId: siteAlcala.id,
       date: today,
       startTime: '08:00',
       durationMinutes: 120,
@@ -147,7 +130,7 @@ async function main() {
     },
     {
       technicianId: createdTechs[2].id, // Alejandro Ruiz
-      siteId: createdSites[4].id, // Alcalá (MISMA OBRA -> 0 min de margen requerido)
+      siteId: siteAlcala.id, // MISMA OBRA consecutiva -> 0 min de margen requerido
       date: today,
       startTime: '10:00', // Empieza de inmediato consecutiva en la misma obra
       durationMinutes: 60,
@@ -157,7 +140,7 @@ async function main() {
     },
     {
       technicianId: createdTechs[3].id, // Sofía Navarro
-      siteId: createdSites[5].id, // San Sebastián de los Reyes
+      siteId: siteSanSe.id,
       date: today,
       startTime: '14:00',
       durationMinutes: 120,
