@@ -79,4 +79,78 @@ describe('Streaming API Copilot (/api/copilot/stream)', () => {
     expect(accumulatedText).toContain('Esta información no consta en la documentación técnica');
     expect(accumulatedText).toContain('DOC-01');
   });
+
+  it('debe servir desde caché con provider = cache para consultas técnicas precargadas', async () => {
+    const req = new NextRequest('http://localhost:3000/api/copilot/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: 'Cono de Abrams',
+        language: 'es',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let initialMetadata: any = null;
+
+    const { value } = await reader.read();
+    const rawChunk = decoder.decode(value);
+    const lines = rawChunk.split('\n');
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const jsonStr = line.slice(6).trim();
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.provider) {
+            initialMetadata = parsed;
+            break;
+          }
+        } catch {}
+      }
+    }
+
+    expect(initialMetadata).not.toBeNull();
+    expect(initialMetadata.provider).toBe('cache');
+  });
+
+  it('debe responder cordialmente a saludos sin activar el guardarraíl de "no consta"', async () => {
+    const req = new NextRequest('http://localhost:3000/api/copilot/stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: 'hola',
+        language: 'es',
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const rawChunk = decoder.decode(value);
+      const lines = rawChunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr && jsonStr !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(jsonStr);
+              if (parsed.text) accumulatedText += parsed.text;
+            } catch {}
+          }
+        }
+      }
+    }
+
+    expect(accumulatedText).toContain('LabQA Copilot');
+    expect(accumulatedText).not.toContain('no consta');
+  });
 });

@@ -80,7 +80,7 @@ export const translations = {
 
     // Copilot
     copilotTitle: 'LabQA Copilot — IA Tècnica de Materials',
-    copilotSubtitle: 'Assistent tècnic i normatiu (EHE, Codi Estructural, ISO 9001)',
+    copilotSubtitle: 'Assistent tècnic i normatiu',
     copilotPlaceholder: 'Pregunta a la IA sobre formigons, assajos, trasllats...',
     copilotStreamBadge: 'Stream SSE',
     copilotStandardsTitle: 'Normes i procediments:',
@@ -181,7 +181,7 @@ export const translations = {
 
     // Copilot
     copilotTitle: 'LabQA Copilot — IA Técnica de Materials',
-    copilotSubtitle: 'Asistente técnico y normativo (EHE, Código Estructural, ISO 9001)',
+    copilotSubtitle: 'Asistente técnico y normativo',
     copilotPlaceholder: 'Pregunta a la IA sobre hormigón, ensayos, traslados...',
     copilotStreamBadge: 'Stream SSE',
     copilotStandardsTitle: 'Normas y procedimientos:',

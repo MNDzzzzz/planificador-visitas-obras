@@ -1,9 +1,10 @@
 import { technicalDocuments, DocumentSection } from './knowledge';
+import { findInCache, saveToCache } from './cache';
 
 export interface RagResponse {
   answer: string;
   sources: { id: string; title: string; category: string }[];
-  provider: 'gemini' | 'local-rag';
+  provider: 'gemini' | 'local-rag' | 'cache';
 }
 
 export interface ScoredDoc {
@@ -76,7 +77,7 @@ export function retrieveContext(query: string, maxResults = 3): { docs: Document
 }
 
 /**
- * Consulta RAG utilizando Google Gemini API con reintentos y fallback local estricto
+ * Consulta RAG con caché exacta/semántica, Google Gemini API (timeout 4s) y fallback local enriquecido
  */
 export async function askLabQACopilot({
   query,
@@ -87,10 +88,26 @@ export async function askLabQACopilot({
   language?: 'ca' | 'es';
   visitsContext?: string;
 }): Promise<RagResponse> {
+  // 1. Consultar caché exacta y semántica en primer lugar
+  const cached = findInCache(query, language);
+  if (cached) {
+    return {
+      answer: cached.answer,
+      sources: cached.sources,
+      provider: 'cache',
+    };
+  }
+
   const { docs: matchedDocs, bestScore } = retrieveContext(query, 3);
   const apiKey = process.env.GEMINI_API_KEY;
   const isCatalan = language === 'ca';
   const bestDoc = matchedDocs[0] || technicalDocuments[0];
+
+  const sources = matchedDocs.map((d) => ({
+    id: d.id,
+    title: d.title,
+    category: d.category,
+  }));
 
   const contextText = matchedDocs
     .map(
@@ -119,17 +136,17 @@ ${contextText}
 ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}` : ''}
 `;
 
-  // Modelos candidatos en orden de preferencia
+  // 2. Intento con Google Gemini API (modelos oficiales con timeout de 4s)
   const candidateModels = [
-    'models/gemini-3.5-flash',
-    'models/gemini-flash-latest',
+    'models/gemini-1.5-flash',
+    'models/gemini-2.0-flash',
   ];
 
   if (apiKey && apiKey.length > 10) {
     for (const model of candidateModels) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
 
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/${model}:generateContent?key=${apiKey}`,
@@ -159,26 +176,29 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
         if (response.ok) {
           const data = await response.json();
           const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (candidate) {
+          if (candidate && candidate.trim().length > 0) {
+            const answer = candidate.trim();
+            saveToCache(query, language, answer, sources, 'gemini');
             return {
-              answer: candidate.trim(),
-              sources: matchedDocs.map((d) => ({ id: d.id, title: d.title, category: d.category })),
+              answer,
+              sources,
               provider: 'gemini',
             };
           }
         }
-      } catch (err) {
-        // Continuar con el siguiente modelo o fallback
+      } catch {
+        // En caso de timeout o error HTTP, continuar al siguiente modelo o fallback
       }
     }
   }
 
-  // Fallback Local con guardarraíl
+  // 3. Fallback Local con Guardarraíl o Respuesta Estructurada
   if (bestScore < 4) {
     const noInfoMsg = isCatalan
       ? `Aquesta informació no consta a la documentació tècnica interna ni als registres de visites del laboratori.\n\nEl procediment més proper per àrea temàtica és **[${bestDoc.id}: ${bestDoc.title}]**, si bé no conté informació específica sobre la consulta formulada.`
       : `Esta información no consta en la documentación técnica interna ni en los registros de visitas del laboratorio.\n\nEl procedimiento más cercano por área temática es **[${bestDoc.id}: ${bestDoc.title}]**, si bien no contiene información específica sobre la consulta planteada.`;
 
+    saveToCache(query, language, noInfoMsg, [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }], 'local-rag');
     return {
       answer: noInfoMsg,
       sources: [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }],
@@ -201,9 +221,11 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
       `*Trazabilidad ISO 9001:* Toda actuación en obra debe quedar registrada en la cadena de custodia del expediente técnico.`;
   }
 
+  saveToCache(query, language, localAnswer, sources, 'local-rag');
+
   return {
     answer: localAnswer,
-    sources: matchedDocs.map((d) => ({ id: d.id, title: d.title, category: d.category })),
+    sources,
     provider: 'local-rag',
   };
 }

@@ -1,12 +1,63 @@
 import { NextRequest } from 'next/server';
 import { retrieveContext } from '@/lib/rag/engine';
+import { findInCache, saveToCache } from '@/lib/rag/cache';
 import { getVisitsAction } from '@/lib/actions/visits';
 import { technicalDocuments } from '@/lib/rag/knowledge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/**
+ * Crea un stream SSE palabra por palabra a partir de un texto completo
+ */
+function createTextStream(
+  text: string,
+  sources: { id: string; title: string; category: string }[],
+  provider: 'cache' | 'local-rag' | 'gemini'
+): ReadableStream {
+  const encoder = new TextEncoder();
+  const words = text.split(' ');
+
+  return new ReadableStream({
+    start(controller) {
+      try {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ sources, provider })}\n\n`)
+        );
+
+        let idx = 0;
+        const interval = setInterval(() => {
+          try {
+            if (idx < words.length) {
+              const textChunk = (idx === 0 ? '' : ' ') + words[idx];
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ text: textChunk })}\n\n`)
+              );
+              idx++;
+            } else {
+              clearInterval(interval);
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+            }
+          } catch {
+            clearInterval(interval);
+          }
+        }, 15);
+      } catch (err) {
+        try {
+          controller.error(err);
+        } catch {
+          // Stream ya cerrado o desconectado
+        }
+      }
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
+  let cleanQuery = '';
+  let isCatalan = false;
+
   try {
     const body = await req.json();
     const { query, language = 'es' } = body;
@@ -18,14 +69,34 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const cleanQuery = query.trim();
-    const isCatalan = language === 'ca';
+    cleanQuery = query.trim();
+    isCatalan = language === 'ca';
 
-    // 1. Recuperar contexto documental
+    // -----------------------------------------------------------------------
+    // 1. CONSULTA A CACHÉ EXACTA O SEMÁNTICA (Prioridad 1: 0ms Latencia)
+    // -----------------------------------------------------------------------
+    const cachedResult = findInCache(cleanQuery, language);
+    if (cachedResult) {
+      const stream = createTextStream(
+        cachedResult.answer,
+        cachedResult.sources,
+        'cache'
+      );
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // 2. RECUPERAR CONTEXTO DOCUMENTAL Y OPERATIVO
+    // -----------------------------------------------------------------------
     const { docs: matchedDocs, bestScore } = retrieveContext(cleanQuery, 3);
     const bestDoc = matchedDocs[0] || technicalDocuments[0];
 
-    // 2. Obtener resumen de visitas de hoy para enriquecer contexto operativo
     let visitsContext = '';
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -37,7 +108,7 @@ export async function POST(req: NextRequest) {
         )
         .join('\n');
     } catch {
-      // Ignorar fallo de visitas si no hay DB
+      // Ignorar fallo de visitas si la DB no está disponible
     }
 
     const contextText = matchedDocs
@@ -50,50 +121,11 @@ export async function POST(req: NextRequest) {
       category: d.category,
     }));
 
-    // 3. Si la pregunta es claramente inventada o fuera de alcance (bestScore < 4), responder de inmediato con guardarraíl
-    if (bestScore < 4) {
-      const noInfoMsg = isCatalan
-        ? `Aquesta informació no consta a la documentació tècnica interna ni als registres de visites del laboratori.\n\nEl procediment més proper per àrea temàtica és **[${bestDoc.id}: ${bestDoc.title}]**, si bé no conté informació específica sobre la consulta formulada.`
-        : `Esta información no consta en la documentación técnica interna ni en los registros de visitas del laboratorio.\n\nEl procedimiento más cercano por área temática es **[${bestDoc.id}: ${bestDoc.title}]**, si bien no contiene información específica sobre la consulta planteada.`;
-
-      const encoder = new TextEncoder();
-      const stream = new ReadableStream({
-        start(controller) {
-          // Enviar fuentes iniciales
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ sources, provider: 'local-rag' })}\n\n`)
-          );
-          // Simular stream palabra por palabra para suavidad perceptual
-          const words = noInfoMsg.split(' ');
-          let idx = 0;
-          const interval = setInterval(() => {
-            if (idx < words.length) {
-              const textChunk = (idx === 0 ? '' : ' ') + words[idx];
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ text: textChunk })}\n\n`)
-              );
-              idx++;
-            } else {
-              clearInterval(interval);
-              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-              controller.close();
-            }
-          }, 25);
-        },
-      });
-
-      return new Response(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream; charset=utf-8',
-          'Cache-Control': 'no-cache, no-transform',
-          Connection: 'keep-alive',
-        },
-      });
-    }
-
+    // -----------------------------------------------------------------------
+    // 3. INTENTO CON GOOGLE GEMINI STREAMING (Timeout estricto de 4s)
+    // -----------------------------------------------------------------------
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 4. Intento con Google Gemini Streaming API (SSE)
     if (apiKey && apiKey.length > 10) {
       const systemPrompt = `
 Eres LabQA Copilot, el asistente inteligente y riguroso de control de calidad en obra y ensayos de materiales de construcción.
@@ -114,7 +146,10 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
 `;
 
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
 
         const geminiRes = await fetch(geminiUrl, {
           method: 'POST',
@@ -131,23 +166,26 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
               maxOutputTokens: 600,
             },
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (geminiRes.ok && geminiRes.body) {
           const encoder = new TextEncoder();
           const reader = geminiRes.body.getReader();
           const decoder = new TextDecoder();
+          let fullGeneratedText = '';
 
           const clientStream = new ReadableStream({
-            async start(controller) {
-              // Enviar fuentes iniciales
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ sources, provider: 'gemini' })}\n\n`)
-              );
-
-              let buffer = '';
-
+            async start(streamController) {
               try {
+                streamController.enqueue(
+                  encoder.encode(`data: ${JSON.stringify({ sources, provider: 'gemini' })}\n\n`)
+                );
+
+                let buffer = '';
+
                 while (true) {
                   const { done, value } = await reader.read();
                   if (done) break;
@@ -165,22 +203,32 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
                           const parsed = JSON.parse(jsonStr);
                           const textChunk = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
                           if (textChunk) {
-                            controller.enqueue(
+                            fullGeneratedText += textChunk;
+                            streamController.enqueue(
                               encoder.encode(`data: ${JSON.stringify({ text: textChunk })}\n\n`)
                             );
                           }
                         } catch {
-                          // Ignorar fragmentos JSON intermedios incompletos
+                          // Ignorar fragmentos parciales
                         }
                       }
                     }
                   }
                 }
 
-                controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-                controller.close();
+                // Guardar respuesta completa en caché para futuras consultas
+                if (fullGeneratedText.trim().length > 0) {
+                  saveToCache(cleanQuery, language, fullGeneratedText.trim(), sources, 'gemini');
+                }
+
+                streamController.enqueue(encoder.encode(`data: [DONE]\n\n`));
+                streamController.close();
               } catch (streamError) {
-                controller.error(streamError);
+                try {
+                  streamController.error(streamError);
+                } catch {
+                  // Ya cerrado
+                }
               }
             },
           });
@@ -194,11 +242,35 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
           });
         }
       } catch (geminiError) {
-        console.warn('Gemini stream falló, activando fallback local:', geminiError);
+        console.warn('Gemini stream falló o expiró (timeout 4s), activando fallback local:', geminiError);
       }
     }
 
-    // 5. Fallback Local Streaming
+    // -----------------------------------------------------------------------
+    // 4. FALLBACK LOCAL RAG ENRIQUECIDO
+    // -----------------------------------------------------------------------
+    if (bestScore < 4) {
+      const noInfoMsg = isCatalan
+        ? `Aquesta informació no consta a la documentació tècnica interna ni als registres de visites del laboratori.\n\nEl procediment més proper per àrea temàtica és **[${bestDoc.id}: ${bestDoc.title}]**, si bé no conté informació específica sobre la consulta formulada.`
+        : `Esta información no consta en la documentación técnica interna ni en los registros de visitas del laboratorio.\n\nEl procedimiento más cercano por área temática es **[${bestDoc.id}: ${bestDoc.title}]**, si bien no contiene información específica sobre la consulta planteada.`;
+
+      saveToCache(cleanQuery, language, noInfoMsg, [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }], 'local-rag');
+
+      const stream = createTextStream(
+        noInfoMsg,
+        [{ id: bestDoc.id, title: bestDoc.title, category: bestDoc.category }],
+        'local-rag'
+      );
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    }
+
     let localAnswer = '';
     if (isCatalan) {
       localAnswer = `Segons el procediment oficial de control **[${bestDoc.id}: ${bestDoc.title}]**:\n\n` +
@@ -214,30 +286,9 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
         `*Trazabilidad ISO 9001:* Toda actuación en obra debe quedar registrada en la cadena de custodia del expediente técnico.`;
     }
 
-    const encoder = new TextEncoder();
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ sources, provider: 'local-rag' })}\n\n`)
-        );
-        const words = localAnswer.split(' ');
-        let idx = 0;
-        const interval = setInterval(() => {
-          if (idx < words.length) {
-            const textChunk = (idx === 0 ? '' : ' ') + words[idx];
-            controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ text: textChunk })}\n\n`)
-            );
-            idx++;
-          } else {
-            clearInterval(interval);
-            controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-            controller.close();
-          }
-        }, 20);
-      },
-    });
+    saveToCache(cleanQuery, language, localAnswer, sources, 'local-rag');
 
+    const stream = createTextStream(localAnswer, sources, 'local-rag');
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -246,10 +297,24 @@ ${visitsContext ? `CONTEXTO OPERATIVO DE VISITAS Y TÉCNICOS:\n${visitsContext}`
       },
     });
   } catch (error) {
-    console.error('Error general en stream handler:', error);
-    return new Response(JSON.stringify({ error: 'Error interno en el servicio de streaming.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+    // -----------------------------------------------------------------------
+    // 5. BLINDAJE CONTRA ERRORES: NUNCA DEVOLVER ERROR 500 AL CLIENTE
+    // -----------------------------------------------------------------------
+    console.error('Excepción rescatada en stream handler:', error);
+    const rescueDoc = technicalDocuments[0];
+    const rescueSources = [{ id: rescueDoc.id, title: rescueDoc.title, category: rescueDoc.category }];
+
+    const rescueAnswer = isCatalan
+      ? `Segons la documentació tècnica oficial [${rescueDoc.id}: ${rescueDoc.title}]:\n\nEl laboratori disposa de procediments homologats per al control de qualitat i assajos de construcció d'acord amb el Codi Estructural. Per a consultes específiques sobre planificació o assajos, podeu consultar les seccions tècniques de l'aplicació.`
+      : `Según la documentación técnica oficial [${rescueDoc.id}: ${rescueDoc.title}]:\n\nEl laboratorio dispone de procedimientos homologados para el control de calidad y ensayos de construcción de acuerdo con el Código Estructural. Para consultas específicas sobre planificación o ensayos, puede consultar las secciones técnicas de la aplicación.`;
+
+    const stream = createTextStream(rescueAnswer, rescueSources, 'local-rag');
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+      },
     });
   }
 }

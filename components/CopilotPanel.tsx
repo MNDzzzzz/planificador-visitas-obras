@@ -19,7 +19,7 @@ interface Message {
   sender: 'user' | 'assistant';
   text: string;
   sources?: { id: string; title: string; category: string }[];
-  provider?: 'gemini' | 'local-rag';
+  provider?: 'gemini' | 'local-rag' | 'cache';
   timestamp: string;
   isStreaming?: boolean;
 }
@@ -163,6 +163,21 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
                 : m
             )
           );
+        } else {
+          // Si no devolvió datos pero teníamos algo en stream, no pisar con error
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    text: m.text || (language === 'ca'
+                      ? 'No s\'ha pogut completar la resposta en aquest moment. Si us plau, torna-ho a provar.'
+                      : 'No se pudo completar la respuesta en este momento. Por favor, inténtalo de nuevo.'),
+                    isStreaming: false,
+                  }
+                : m
+            )
+          );
         }
       } catch {
         setMessages((prev) =>
@@ -170,10 +185,9 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
             m.id === assistantMsgId
               ? {
                   ...m,
-                  text:
-                    language === 'ca'
-                      ? 'Error de connexió amb el copilot tècnic.'
-                      : 'Error de conexión con el copiloto técnico.',
+                  text: m.text || (language === 'ca'
+                    ? 'No s\'ha pogut connectar amb el copilot tècnic en aquest moment.'
+                    : 'No se pudo conectar con el copiloto técnico en este momento.'),
                   isStreaming: false,
                 }
               : m
@@ -219,9 +233,6 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
               <h2 className="text-sm font-bold tracking-tight text-[var(--text-primary)] truncate">
                 LabQA Copilot
               </h2>
-              <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-[#2997FF]/10 text-[#2997FF] border border-[#2997FF]/25">
-                Stream SSE
-              </span>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)] truncate">
               {t.copilotSubtitle}
@@ -295,7 +306,13 @@ export const CopilotPanel: React.FC<CopilotPanelProps> = ({ language }) => {
                     <span>{msg.timestamp}</span>
                     {msg.provider && (
                       <span className="font-mono text-[9px] uppercase font-semibold opacity-80">
-                        {msg.provider === 'gemini' ? 'Gemini 3.5' : 'Base Local'}
+                        {msg.provider === 'gemini'
+                          ? 'Gemini'
+                          : msg.provider === 'cache'
+                          ? language === 'ca'
+                            ? 'Caché Semàntica'
+                            : 'Caché Semántica'
+                          : 'Base Local'}
                       </span>
                     )}
                   </div>

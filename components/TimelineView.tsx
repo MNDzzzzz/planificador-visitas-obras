@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Clock,
   MapPin,
@@ -8,7 +8,6 @@ import {
   XCircle,
   FileText,
   Building2,
-  Calendar,
 } from 'lucide-react';
 import { SiteDTO, TechnicianDTO, VisitDTO } from '../lib/types';
 import { timeToMinutes } from '../lib/validation/rules';
@@ -32,6 +31,45 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
   onCancelVisit,
 }) => {
   const t = translations[language];
+
+  // Estado reactivo para la tarjeta de visita expandida con período de gracia de 250ms
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = (visitId: string) => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    setActiveVisitId(visitId);
+  };
+
+  const handleMouseLeave = () => {
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+    }
+    leaveTimeoutRef.current = setTimeout(() => {
+      setActiveVisitId(null);
+    }, 250);
+  };
+
+  const handleCardClick = (e: React.MouseEvent, visitId: string) => {
+    e.stopPropagation();
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    setActiveVisitId((prev) => (prev === visitId ? null : visitId));
+  };
+
+  // Limpieza de temporizador al desmontar
+  useEffect(() => {
+    return () => {
+      if (leaveTimeoutRef.current) {
+        clearTimeout(leaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Horas de la jornada: 08:00 a 17:00 (Europe/Madrid)
   const HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
@@ -57,7 +95,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            {t.timelineSubtitle} • <span className="text-[#2997FF]">{t.viewDetailsHint}</span>
+            {t.timelineSubtitle} • <span className="text-[#2997FF] font-medium">{t.viewDetailsHint}</span>
           </p>
         </div>
 
@@ -84,12 +122,12 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       </div>
 
       {/* Grid Container con eje horario sticky */}
-      <div className="overflow-x-auto pb-4">
+      <div className="overflow-x-auto pb-6">
         <div className="min-w-[840px] p-4 flex">
           {/* Eje de Horas Vertical Sticky (08:00 a 17:00) */}
           <div
             className="w-16 shrink-0 sticky left-0 z-20 pr-2 border-r border-[var(--border-subtle)] bg-[var(--bg-card)]/95 backdrop-blur-md shadow-sm"
-            style={{ height: `${TOTAL_HEIGHT}px` }}
+            style={{ height: `${TOTAL_HEIGHT + 80}px` }}
           >
             {HOURS.map((hour) => {
               const topPos = (hour * 60 - START_MINUTE) * PIXELS_PER_MINUTE;
@@ -162,10 +200,10 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Carril de Tiempo del Técnico (overflow-visible para permitir elevación de hover) */}
+                  {/* Carril de Tiempo del Técnico (con margen inferior para expansiones en últimas horas) */}
                   <div
                     className="relative flex-1 bg-[var(--bg-card-hover)]/30 border border-[var(--border-subtle)] rounded-xl"
-                    style={{ height: `${TOTAL_HEIGHT}px` }}
+                    style={{ height: `${TOTAL_HEIGHT + 80}px` }}
                   >
                     {/* Líneas Horarias Horizontales */}
                     {HOURS.map((hour) => {
@@ -179,7 +217,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                       );
                     })}
 
-                    {/* Bloques de Traslado Rayados (Regla B) */}
+                    {/* Bloques de Traslado Rayados */}
                     {travelBlocks.map((tb, idx) => (
                       <div
                         key={`travel-${idx}`}
@@ -199,115 +237,128 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                       </div>
                     ))}
 
-                    {/* Bloques de Visita con Hover Expandible Apple UI */}
+                    {/* Bloques de Visita con Estado Reactivo y Opacidad 100% */}
                     {techVisits.map((visit) => {
                       const startMins = timeToMinutes(visit.startTime);
                       const duration = visit.durationMinutes;
                       const topPos = (startMins - START_MINUTE) * PIXELS_PER_MINUTE;
                       const baseHeightPx = Math.max(duration * PIXELS_PER_MINUTE, 36);
                       const isCancelled = visit.status === 'CANCELLED';
+                      const isExpanded = activeVisitId === visit.id;
 
                       return (
                         <div
                           key={visit.id}
-                          className="group absolute left-1.5 right-1.5 z-10 hover:z-30 transition-all duration-200"
+                          onMouseEnter={() => handleMouseEnter(visit.id)}
+                          onMouseLeave={handleMouseLeave}
+                          onClick={(e) => handleCardClick(e, visit.id)}
+                          className={`absolute left-1.5 right-1.5 transition-all duration-150 ${
+                            isExpanded ? 'z-50' : 'z-10'
+                          }`}
                           style={{
                             top: `${topPos}px`,
                           }}
                         >
-                          {/* Tarjeta de Visita:
-                              - Estado normal: compacta, altura proporcional a los minutos, sin desbordes.
-                              - Estado hover: se expande suavemente hacia el frente con z-40, sombra profunda y detalles completos.
-                          */}
+                          {/* Contenedor de la Tarjeta con Fondo 100% Opaco (Cero Mezcla de Texto) */}
                           <div
                             className={`w-full rounded-xl border transition-all duration-200 cursor-pointer ${
-                              isCancelled
-                                ? 'bg-[var(--bg-card)]/80 border-dashed border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-65 group-hover:opacity-100 group-hover:bg-[var(--bg-card)] group-hover:shadow-xl group-hover:z-40'
-                                : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-primary)] shadow-sm group-hover:shadow-2xl group-hover:border-[#2997FF] group-hover:ring-1 group-hover:ring-[#2997FF]/40 group-hover:z-40'
+                              isExpanded
+                                ? 'bg-[var(--bg-card)] border-[#2997FF] shadow-[0_20px_45px_rgba(0,0,0,0.65)] ring-2 ring-[#2997FF]/35 text-[var(--text-primary)]'
+                                : isCancelled
+                                ? 'bg-[var(--bg-card)]/80 border-dashed border-[var(--border-subtle)] text-[var(--text-tertiary)] opacity-65 hover:border-[#2997FF]/50'
+                                : 'bg-[var(--bg-card)] border-[var(--border-subtle)] text-[var(--text-primary)] shadow-sm hover:border-[#2997FF]/50'
                             }`}
                             style={{
-                              borderLeftWidth: '3.5px',
+                              borderLeftWidth: '4px',
                               borderLeftColor: isCancelled ? 'var(--border-subtle)' : tech.color,
                             }}
                           >
-                            {/* Contenido en Reposo (Siempre visible, compacto y ordenado) */}
+                            {/* Fila en Reposo (Siempre visible, compacta y alineada) */}
                             <div
                               className="px-2.5 py-1.5 flex flex-col justify-between overflow-hidden"
                               style={{
-                                height: `${baseHeightPx}px`,
+                                height: isExpanded ? 'auto' : `${baseHeightPx}px`,
+                                minHeight: '36px',
                               }}
                             >
-                              {/* Fila 1: Hora y Duración */}
+                              {/* Cabecera: Horario y Duración */}
                               <div className="flex items-center justify-between gap-1 shrink-0">
                                 <span className="text-[10px] sm:text-[11px] font-mono font-bold tabular-numbers text-[var(--text-primary)]">
                                   {visit.startTime}–{visit.endTime}
                                 </span>
 
                                 {isCancelled ? (
-                                  <span className="px-1 py-0.2 rounded text-[9px] font-medium bg-slate-500/15 text-[var(--text-tertiary)]">
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-500/15 text-[var(--text-tertiary)]">
                                     {t.visitStatusCancelled}
                                   </span>
                                 ) : (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#2997FF]/15 text-[#2997FF] border border-[#2997FF]/25">
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#2997FF]/15 text-[#2997FF] border border-[#2997FF]/25">
                                     {duration}m
                                   </span>
                                 )}
                               </div>
 
-                              {/* Fila 2: Título de la Obra (Truncado con elegancia en reposo) */}
-                              <div className="flex items-center gap-1.5 min-w-0 my-auto">
-                                <Building2 className="w-3 h-3 text-[#2997FF] shrink-0" />
-                                <p className="text-[11px] sm:text-xs font-semibold text-[var(--text-primary)] truncate">
+                              {/* Título de la Obra */}
+                              <div className="flex items-center gap-1.5 min-w-0 my-1">
+                                <Building2 className="w-3.5 h-3.5 text-[#2997FF] shrink-0" />
+                                <p
+                                  className={`text-[11px] sm:text-xs font-semibold text-[var(--text-primary)] ${
+                                    isExpanded ? 'whitespace-normal leading-snug' : 'truncate'
+                                  }`}
+                                >
                                   {visit.site?.name || 'Obra'}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Contenedor Expandido por Hover (Se revela suavemente al poner el cursor) */}
-                            <div className="hidden group-hover:flex flex-col gap-2 px-2.5 pb-2.5 pt-1 border-t border-[var(--border-subtle)] bg-[var(--bg-card-hover)]/60 rounded-b-xl animate-in fade-in duration-150">
-                              {/* Municipio / Dirección Completa */}
-                              <div className="flex items-start gap-1.5 text-[11px] text-[var(--text-secondary)]">
-                                <MapPin className="w-3.5 h-3.5 text-[#2997FF] shrink-0 mt-0.5" />
-                                <div className="leading-snug">
-                                  <span className="font-semibold text-[var(--text-primary)]">
-                                    {visit.site?.municipality || 'Madrid'}
-                                  </span>
-                                  {visit.site?.address && (
-                                    <span className="block text-[10px] text-[var(--text-secondary)]">
-                                      {visit.site.address}
+                            {/* Panel Expandido Continuo con 100% de Opacidad y Botón Accesible */}
+                            {isExpanded && (
+                              <div className="flex flex-col gap-2.5 px-3 pb-3 pt-2 border-t border-[var(--border-subtle)] bg-[var(--bg-card)] rounded-b-xl animate-in fade-in duration-150">
+                                {/* Municipio y Dirección Completa */}
+                                <div className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)]">
+                                  <MapPin className="w-3.5 h-3.5 text-[#2997FF] shrink-0 mt-0.5" />
+                                  <div className="leading-snug">
+                                    <span className="font-semibold text-[var(--text-primary)]">
+                                      {visit.site?.municipality || 'Madrid'}
                                     </span>
-                                  )}
+                                    {visit.site?.address && (
+                                      <span className="block text-[11px] text-[var(--text-secondary)] mt-0.5">
+                                        {visit.site.address}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+
+                                {/* Notas Técnicas */}
+                                {visit.notes && (
+                                  <div className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)] bg-[var(--bg-card-hover)] p-2 rounded-xl border border-[var(--border-subtle)]">
+                                    <FileText className="w-3.5 h-3.5 text-[#2997FF] shrink-0 mt-0.5" />
+                                    <span className="leading-snug text-[var(--text-primary)]">{visit.notes}</span>
+                                  </div>
+                                )}
+
+                                {/* Barra de Acciones y Cancelar Visita */}
+                                {!isCancelled && (
+                                  <div className="pt-2 flex items-center justify-between border-t border-[var(--border-subtle)] gap-2">
+                                    <span className="text-[10px] text-[var(--text-secondary)]">
+                                      {t.cancelledBadge}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onCancelVisit(visit.id);
+                                      }}
+                                      className="apple-press min-hit-area inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-500 hover:text-white bg-rose-500/10 hover:bg-rose-500 border border-rose-500/30 transition-all cursor-pointer shadow-sm pointer-events-auto"
+                                      title={t.cancelActionBtn}
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                      <span>{t.cancelActionBtn}</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-
-                              {/* Notas Técnicas de la Inspección */}
-                              {visit.notes && (
-                                <div className="flex items-start gap-1.5 text-[10px] text-[var(--text-secondary)] bg-[var(--bg-card)] p-1.5 rounded-lg border border-[var(--border-subtle)]">
-                                  <FileText className="w-3 h-3 text-[var(--text-secondary)] shrink-0 mt-0.5" />
-                                  <span className="line-clamp-3 leading-snug">{visit.notes}</span>
-                                </div>
-                              )}
-
-                              {/* Botón de Cancelación de Visita */}
-                              {!isCancelled && (
-                                <div className="pt-1 flex items-center justify-between">
-                                  <span className="text-[9px] text-[var(--text-secondary)]">
-                                    Libera horario al cancelar
-                                  </span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      onCancelVisit(visit.id);
-                                    }}
-                                    className="apple-press inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold text-rose-500 hover:bg-rose-500/10 border border-rose-500/30 transition-colors cursor-pointer"
-                                    title={t.cancelActionBtn}
-                                  >
-                                    <XCircle className="w-3 h-3" />
-                                    <span>{t.cancelActionBtn}</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
                       );
