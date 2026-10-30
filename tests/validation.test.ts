@@ -6,7 +6,8 @@ import {
   calculateEndTime,
 } from '../lib/validation/rules';
 import { createVisitSchema, cancelVisitSchema } from '../lib/validation/schemas';
-import { VisitDTO } from '../lib/types';
+import { VisitDTO, SiteDTO } from '../lib/types';
+import { officialSites } from '../lib/geo/routing';
 
 describe('Motor de Validación de Visitas a Obras', () => {
   const dummyTechnicianId = 'tech-1';
@@ -690,6 +691,64 @@ describe('Motor de Validación de Visitas a Obras', () => {
         expect(failResult.rule).toBe('RULE_B');
         expect(failResult.details?.actualGapMinutes).toBe(15);
       }
+    });
+
+    it('aplica tiempos de desplazamiento dinámicos calibrados cuando se provee sitesMap (Terrassa a Sabadell: 19 min)', () => {
+      const terrassa = officialSites.find((s) => s.id === 'site-terrassa-nord')!;
+      const sabadell = officialSites.find((s) => s.id === 'site-sabadell-centre')!;
+
+      const sitesMap = new Map<string, SiteDTO>([
+        [terrassa.id, terrassa],
+        [sabadell.id, sabadell],
+      ]);
+
+      const visitTerrassa: VisitDTO = {
+        id: 'v-terrassa-dyn',
+        technicianId: dummyTechnicianId,
+        siteId: terrassa.id,
+        site: terrassa,
+        date: testDate,
+        startTime: '08:30',
+        durationMinutes: 60,
+        endTime: '09:30',
+        status: 'SCHEDULED',
+      };
+
+      // Intento en Sabadell con 15 min de margen (09:45) -> Falla porque se requieren 19 min
+      const failDynamic = validateVisitScheduling({
+        newVisit: {
+          technicianId: dummyTechnicianId,
+          siteId: sabadell.id,
+          date: testDate,
+          startTime: '09:45',
+          durationMinutes: 60,
+        },
+        existingVisits: [visitTerrassa],
+        sitesMap,
+      });
+
+      expect(failDynamic.isValid).toBe(false);
+      if (!failDynamic.isValid) {
+        expect(failDynamic.rule).toBe('RULE_B');
+        expect(failDynamic.code).toBe('INSUFFICIENT_TRAVEL_TIME');
+        expect(failDynamic.details?.requiredGapMinutes).toBe(19);
+        expect(failDynamic.details?.actualGapMinutes).toBe(15);
+      }
+
+      // Intento en Sabadell con exactamente 19 min de margen (09:49) -> Válido
+      const passDynamic = validateVisitScheduling({
+        newVisit: {
+          technicianId: dummyTechnicianId,
+          siteId: sabadell.id,
+          date: testDate,
+          startTime: '09:49',
+          durationMinutes: 60,
+        },
+        existingVisits: [visitTerrassa],
+        sitesMap,
+      });
+
+      expect(passDynamic.isValid).toBe(true);
     });
   });
 

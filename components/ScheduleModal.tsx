@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition, useEffect } from 'react';
+import React, { useState, useTransition, useEffect, useMemo } from 'react';
 import {
   ActionResult,
   CreateVisitInput,
@@ -12,9 +12,11 @@ import {
 import {
   calculateEndTime,
   validateVisitScheduling,
+  timeToMinutes,
   WORK_DAY_START_MINUTES,
   WORK_DAY_END_MINUTES,
 } from '../lib/validation/rules';
+import { getOfflineTravelEstimate } from '../lib/geo/routing';
 import {
   X,
   Calendar,
@@ -22,9 +24,13 @@ import {
   HardHat,
   Building2,
   CheckCircle,
+  CheckCircle2,
   FileText,
   ShieldAlert,
   ArrowRight,
+  Car,
+  Navigation,
+  AlertTriangle,
 } from 'lucide-react';
 import { Language, translations } from '../lib/i18n/translations';
 
@@ -101,19 +107,31 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
   }, [isOpen, defaultTechnicianId, defaultDate, onClose]);
 
-  if (!isOpen) return null;
+  // Mapa de obras para lookup rápido
+  const sitesMap = useMemo(() => {
+    const map = new Map<string, SiteDTO>();
+    sites.forEach((s) => map.set(s.id, s));
+    return map;
+  }, [sites]);
+
+  const selectedTech = technicians.find((tech) => tech.id === technicianId);
+  const selectedSite = sitesMap.get(siteId) || sites.find((site) => site.id === siteId);
 
   // Cálculo en vivo de hora de fin
   let computedEndTime = '--:--';
+  let startMinutes = 0;
+  let endMinutes = 0;
   try {
     if (startTime && durationMinutes > 0) {
       computedEndTime = calculateEndTime(startTime, durationMinutes);
+      startMinutes = timeToMinutes(startTime);
+      endMinutes = startMinutes + durationMinutes;
     }
   } catch {
     computedEndTime = '--:--';
   }
 
-  // Pre-validación cliente en vivo para feedback inmediato
+  // Pre-validación cliente en vivo con coordenadas y matriz dinámica
   let clientValidation: ValidationFailure | null = null;
   if (technicianId && siteId && date && startTime && durationMinutes > 0) {
     const result = validateVisitScheduling({
@@ -125,11 +143,55 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         durationMinutes,
       },
       existingVisits,
+      sitesMap,
     });
     if (!result.isValid) {
       clientValidation = result;
     }
   }
+
+  // Localizar visitas del técnico en esta fecha para cálculo dinámico de ruta y margen
+  const techDateVisits = useMemo(() => {
+    return existingVisits
+      .filter((v) => v.technicianId === technicianId && v.date === date && v.status === 'SCHEDULED')
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [existingVisits, technicianId, date]);
+
+  let immediatePrev: VisitDTO | null = null;
+  let immediatePrevEnd = -1;
+  let immediateNext: VisitDTO | null = null;
+  let immediateNextStart = Infinity;
+
+  if (startMinutes > 0 && endMinutes > 0) {
+    for (const v of techDateVisits) {
+      const vStart = timeToMinutes(v.startTime);
+      const vEnd = timeToMinutes(v.endTime);
+
+      if (vEnd <= startMinutes) {
+        if (vEnd > immediatePrevEnd) {
+          immediatePrevEnd = vEnd;
+          immediatePrev = v;
+        }
+      }
+      if (vStart >= endMinutes) {
+        if (vStart < immediateNextStart) {
+          immediateNextStart = vStart;
+          immediateNext = v;
+        }
+      }
+    }
+  }
+
+  // Estimaciones dinámicas de traslado con visita anterior y posterior
+  const prevSite = immediatePrev ? (immediatePrev.site || sitesMap.get(immediatePrev.siteId)) : null;
+  const prevEstimate = immediatePrev && selectedSite && prevSite
+    ? getOfflineTravelEstimate(prevSite, selectedSite)
+    : null;
+
+  const nextSite = immediateNext ? (immediateNext.site || sitesMap.get(immediateNext.siteId)) : null;
+  const nextEstimate = immediateNext && selectedSite && nextSite
+    ? getOfflineTravelEstimate(selectedSite, nextSite)
+    : null;
 
   const activeError = serverError || (clientValidation ? {
     message: clientValidation.message,
@@ -193,8 +255,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
     }
   };
 
-  const selectedTech = technicians.find((tech) => tech.id === technicianId);
-  const selectedSite = sites.find((site) => site.id === siteId);
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto apple-modal-overlay">
@@ -228,7 +289,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
-          {/* BANNER DE VALIDACIÓN CORPORATIVO LIMPIO */}
+          {/* BANNER DE VALIDACIÓN CORPORATIVO */}
           {activeError && (
             <div className="rounded-2xl p-4 bg-rose-500/10 border border-rose-500/30 shadow-inner space-y-2 animate-in fade-in duration-200">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -373,7 +434,7 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               ))}
             </div>
 
-            {/* Preview de Fin de Visita con Tabular Nums */}
+            {/* Preview de Fin de Visita */}
             <div className="flex items-center justify-between text-xs bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-xl px-3.5 py-2">
               <div className="flex items-center gap-1.5 text-[var(--text-secondary)]">
                 <Clock className="w-3.5 h-3.5 text-[#2997FF]" />
@@ -386,6 +447,89 @@ export const ScheduleModal: React.FC<ScheduleModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* TARJETA DE RUTA Y TRASLADO DINÁMICO (Apple Design System) */}
+          {immediatePrev && prevEstimate && (
+            <div className="rounded-2xl p-3.5 sm:p-4 bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] space-y-2.5 transition-all shadow-sm">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
+                  <Car className="w-4 h-4 text-[#2997FF]" />
+                  <span>{t.travelEstimated}</span>
+                </span>
+                
+                {prevEstimate.routeSummary && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#2997FF]/10 text-[#2997FF] border border-[#2997FF]/25">
+                    <Navigation className="w-3 h-3" />
+                    <span>{prevEstimate.routeSummary}</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Origen -> Destino */}
+              <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] flex-wrap">
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {prevSite?.name} ({prevSite?.municipality})
+                </span>
+                <ArrowRight className="w-3.5 h-3.5 text-[#2997FF] shrink-0" />
+                <span className="font-semibold text-[var(--text-primary)]">
+                  {selectedSite?.name} ({selectedSite?.municipality})
+                </span>
+              </div>
+
+              {/* Desglose de Tiempo y Comparación de Margen */}
+              {prevEstimate.provider === 'same-site' || immediatePrev.siteId === siteId ? (
+                <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{t.sameSiteNoTravel}</span>
+                </div>
+              ) : (
+                (() => {
+                  const availableGap = startMinutes - immediatePrevEnd;
+                  const isMarginOk = availableGap >= prevEstimate.totalRequiredMinutes;
+
+                  return (
+                    <div className="space-y-2">
+                      {/* Desglose visual: Conducción + Buffer */}
+                      <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] bg-[var(--bg-card)] rounded-xl px-3 py-2 border border-[var(--border-subtle)]">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-[#2997FF]" />
+                          <span>
+                            {prevEstimate.drivingMinutes} min {t.drivingTime} + {prevEstimate.bufferMinutes} min {t.bufferTime}
+                          </span>
+                        </div>
+                        <span className="font-bold tabular-numbers text-[var(--text-primary)]">
+                          = {prevEstimate.totalRequiredMinutes} min {t.travelMarginRequired}
+                        </span>
+                      </div>
+
+                      {/* Estado del Margen Disponible */}
+                      <div
+                        className={`flex items-center justify-between text-xs rounded-xl px-3 py-2 border font-semibold ${
+                          isMarginOk
+                            ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-rose-500/10 border-rose-500/25 text-rose-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {isMarginOk ? (
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                          )}
+                          <span>
+                            {isMarginOk ? t.travelMarginOk : t.travelMarginInsufficient}
+                          </span>
+                        </div>
+                        <span className="tabular-numbers">
+                          {t.travelMarginAvailable}: {availableGap} min / req: {prevEstimate.totalRequiredMinutes} min
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          )}
 
           {/* Notas de Obra */}
           <div className="space-y-1.5">

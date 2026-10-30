@@ -398,6 +398,8 @@ En quin assaig, procediment normatiu o planificació et puc ajudar avui?`,
         'cuantos minutos de traslado',
         'desplazamiento tecnico 30 minutos',
         'porque se exigen 30 minutos de traslado',
+        'tiempo de traslado en el valles',
+        'tiempo de traslado entre terrassa y sabadell',
       ],
       ca: [
         'quant de temps de desplacament es requereix entre obres diferents',
@@ -407,26 +409,40 @@ En quin assaig, procediment normatiu o planificació et puc ajudar avui?`,
         'quants minuts de trasllat',
         'desplacament tecnic 30 minuts',
         'per que sexigeixen 30 minuts de trasllat',
+        'temps de trasllat al valles',
+        'temps de trasllat entre terrassa i sabadell',
       ],
     },
     answer: {
-      es: `Según la **[DOC-07: Guía Operativa de Visitas a Obra, Desplazamientos y Seguridad Laboral]** y el motor de validación del sistema (Regla B):
+      es: `Según la **[DOC-07: Guía Operativa de Visitas a Obra]** y el **[DOC-11: Protocolo de Rutas y Logística en el Vallès]** (Regla B):
 
-### 1. Margen entre Obras Diferentes:
-• Se exige un margen mínimo estricto de **30 minutos de traslado** entre visitas consecutivas programadas en obras o emplazamientos distintos.
+### 1. Margen Dinámico entre Obras Diferentes:
+• El tiempo mínimo de traslado se calcula de forma dinámica en base a la distancia viaria real y tiempos calibrados más un **buffer logístico de +5 minutos**:
+  - **Terrassa <-> Sabadell (C-58):** 14 min conducción + 5 min buffer = **19 min**.
+  - **Terrassa <-> Rubí (C-16):** 15 min conducción + 5 min buffer = **20 min**.
+  - **Sabadell <-> Sant Cugat (AP-7):** 17 min conducción + 5 min buffer = **22 min**.
+  - **Sabadell <-> Granollers (AP-7):** 22 min conducción + 5 min buffer = **27 min**.
+  - **Granollers <-> Mataró (C-60):** 18 min conducción + 5 min buffer = **23 min**.
+• Para obras genéricas sin geolocalización se aplica el margen estándar preventivo de **30 minutos de traslado**.
 • Este requisito se valida **bidireccionalmente**: tanto con la visita inmediatamente anterior como con la inmediatamente posterior.
 
 ### 2. Visitas Consecutivas en la Misma Obra:
 • Si dos visitas consecutivas se realizan en el **mismo emplazamiento u obra**, el tiempo de traslado exigido es de **0 minutos** (pueden ser contiguas de forma inmediata, ej. 10:00 a 11:00 y 11:00 a 12:00).
 
 ### 3. Fundamento Técnico y Logístico:
-• **Seguridad Vial:** Conducción prudente y respeto de los límites de velocidad interurbanos de la Comunidad de Madrid.
+• **Seguridad Vial:** Conducción prudente y respeto de los límites de velocidad interurbanos.
 • **Mantenimiento Instrumental:** Limpieza, desinfección y secado de equipos de toma de muestras (cono de Abrams, varillas enrasadoras, termómetros digitales, calibres).
 • **Custodia de Muestras:** Acondicionamiento seguro de las probetas frescas en los cajones térmicos con arena para evitar golpes y pérdida de humedad durante el transporte.`,
-      ca: `Segons la **[DOC-07: Guia Operativa de Visites a Obra, Desplaçaments i Seguretat Laboral]** i el motor de validació del sistema (Regla B):
+      ca: `Segons la **[DOC-07: Guia Operativa de Visites a Obra]** i el **[DOC-11: Protocol de Rutes i Logística al Vallès]** (Regla B):
 
-### 1. Marge entre Obres Diferents:
-• S'exigeix un marge mínim estricte de **30 minuts de trasllat** entre visites consecutives programades en obres o emplaçaments diferents.
+### 1. Marge Dinàmic entre Obres Diferents:
+• El temps mínim de trasllat es calcula de manera dinàmica en base a la distància viària real i temps calibrats més un **buffer logístic de +5 minuts**:
+  - **Terrassa <-> Sabadell (C-58):** 14 min conducció + 5 min buffer = **19 min**.
+  - **Terrassa <-> Rubí (C-16):** 15 min conducció + 5 min buffer = **20 min**.
+  - **Sabadell <-> Sant Cugat (AP-7):** 17 min conducció + 5 min buffer = **22 min**.
+  - **Sabadell <-> Granollers (AP-7):** 22 min conducció + 5 min buffer = **27 min**.
+  - **Granollers <-> Mataró (C-60):** 18 min conducció + 5 min buffer = **23 min**.
+• Per a obres genèriques sense geolocalització s'aplica el marge estàndard preventiu de **30 minuts**.
 • Aquest requisit es valida **bidireccionalment**: tant amb la visita immediatament anterior com amb la immediatament posterior.
 
 ### 2. Visites Consecutives a la Mateixa Obra:
@@ -439,7 +455,7 @@ En quin assaig, procediment normatiu o planificació et puc ajudar avui?`,
     },
     sources: [
       { id: 'DOC-07', title: 'Guía Operativa de Visitas a Obra, Desplazamientos y Seguridad Laboral', category: 'Operativa y Logística' },
-      { id: 'DOC-05', title: 'Protocolo de Seguridad en Obra y EPIs', category: 'Seguridad y EPIs' },
+      { id: 'DOC-11', title: 'Protocolo de Rutas y Logística de Inspección en el Vallès', category: 'Operativa y Logística' },
     ],
   },
 

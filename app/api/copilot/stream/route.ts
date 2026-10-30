@@ -1,8 +1,7 @@
 import { NextRequest } from 'next/server';
-import { retrieveContext } from '@/lib/rag/engine';
-import { findInCache, saveToCache } from '@/lib/rag/cache';
-import { getVisitsAction } from '@/lib/actions/visits';
-import { technicalDocuments } from '@/lib/rag/knowledge';
+import { retrieveContext } from '../../../../lib/rag/engine';
+import { findInCache, saveToCache } from '../../../../lib/rag/cache';
+import { technicalDocuments } from '../../../../lib/rag/knowledge';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,6 +53,10 @@ function createTextStream(
   });
 }
 
+export async function GET() {
+  return Response.json({ status: 'ok' });
+}
+
 export async function POST(req: NextRequest) {
   let cleanQuery = '';
   let isCatalan = false;
@@ -98,18 +101,6 @@ export async function POST(req: NextRequest) {
     const bestDoc = matchedDocs[0] || technicalDocuments[0];
 
     let visitsContext = '';
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const visits = await getVisitsAction({ date: today });
-      visitsContext = visits
-        .map(
-          (v) =>
-            `- ${v.startTime} a ${v.endTime}: Técnico ${v.technician?.name || v.technicianId} en "${v.site?.name || v.siteId}" (${v.site?.municipality || 'Sede'}) [Estado: ${v.status}]`
-        )
-        .join('\n');
-    } catch {
-      // Ignorar fallo de visitas si la DB no está disponible
-    }
 
     const contextText = matchedDocs
       .map((d) => `### [${d.id}] ${d.title} (Categoría: ${d.category})\n${d.content.trim()}`)

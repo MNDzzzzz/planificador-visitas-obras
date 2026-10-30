@@ -1,14 +1,37 @@
 import {
   CreateVisitInput,
+  SiteDTO,
   ValidationResult,
   VisitDTO,
 } from '../types';
+import { getOfflineTravelEstimate, officialSites } from '../geo/routing';
 
 // Constantes de jornada laboral (Europe/Madrid)
 export const WORK_DAY_START_MINUTES = 8 * 60; // 08:00 -> 480 minutos
 export const WORK_DAY_END_MINUTES = 17 * 60; // 17:00 -> 1020 minutos
 export const MIN_TRAVEL_MINUTES_DIFFERENT_SITES = 30;
 export const MIN_TRAVEL_MINUTES_SAME_SITE = 0;
+
+/**
+ * Resuelve los datos de una obra buscando en el mapa provisto, en la visita o en el catálogo oficial
+ */
+function resolveSite(
+  siteId: string,
+  visitSite?: SiteDTO,
+  sitesMap?: Map<string, SiteDTO>
+): SiteDTO {
+  if (visitSite && visitSite.id === siteId) return visitSite;
+  if (sitesMap && sitesMap.has(siteId)) return sitesMap.get(siteId)!;
+  const official = officialSites.find((s) => s.id === siteId);
+  if (official) return official;
+
+  return {
+    id: siteId,
+    name: visitSite?.name || `Obra (${siteId})`,
+    municipality: visitSite?.municipality || 'Desconocido',
+    address: visitSite?.address || '',
+  };
+}
 
 /**
  * Convierte un string en formato 'HH:mm' a minutos desde la medianoche.
@@ -48,6 +71,7 @@ export interface ValidateVisitParams {
   newVisit: CreateVisitInput;
   existingVisits: VisitDTO[];
   excludeVisitId?: string; // Para edición: omitir la propia visita que se está modificando
+  sitesMap?: Map<string, SiteDTO>;
 }
 
 /**
@@ -62,6 +86,7 @@ export function validateVisitScheduling({
   newVisit,
   existingVisits,
   excludeVisitId,
+  sitesMap,
 }: ValidateVisitParams): ValidationResult {
   // 1. Validación de Formato y Duración
   const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -186,53 +211,69 @@ export function validateVisitScheduling({
     }
   }
 
-  // Validar desplazamiento con la visita anterior
+  // Validar desplazamiento con la visita anterior (Regla B Dinámica)
   if (immediatePrev) {
-    const isDifferentSite = immediatePrev.siteId !== newVisit.siteId;
-    const requiredMargin = isDifferentSite
-      ? MIN_TRAVEL_MINUTES_DIFFERENT_SITES
-      : MIN_TRAVEL_MINUTES_SAME_SITE;
+    const prevSite = resolveSite(immediatePrev.siteId, immediatePrev.site, sitesMap);
+    const currentSite = resolveSite(newVisit.siteId, undefined, sitesMap);
+
+    const travelEstimate = getOfflineTravelEstimate(prevSite, currentSite);
+    const requiredMargin = travelEstimate.totalRequiredMinutes;
     const actualMargin = startMinutes - immediatePrevEnd;
 
     if (actualMargin < requiredMargin) {
-      const prevSiteName = immediatePrev.site?.name || 'la obra previa';
+      const prevSiteName = prevSite.name || 'la obra previa';
+      const detailBreakdown =
+        travelEstimate.drivingMinutes > 0
+          ? ` (${travelEstimate.drivingMinutes} min conducción + ${travelEstimate.bufferMinutes} min margen)`
+          : '';
+      const routeText = travelEstimate.routeSummary ? ` [${travelEstimate.routeSummary}]` : '';
+
       return {
         isValid: false,
         rule: 'RULE_B',
         code: 'INSUFFICIENT_TRAVEL_TIME',
-        message: `Tiempo de desplazamiento insuficiente: se requieren al menos ${requiredMargin} minutos de traslado desde "${prevSiteName}" (termina a las ${immediatePrev.endTime}). Margen actual disponible: ${actualMargin} minutos.`,
+        message: `Tiempo de desplazamiento insuficiente: se requieren al menos ${requiredMargin} minutos de traslado desde "${prevSiteName}"${detailBreakdown}${routeText} (termina a las ${immediatePrev.endTime}). Margen actual disponible: ${actualMargin} minutos.`,
         details: {
           conflictingVisitId: immediatePrev.id,
           conflictingSiteName: prevSiteName,
           requiredGapMinutes: requiredMargin,
           actualGapMinutes: actualMargin,
           direction: 'PREVIOUS',
+          travelEstimate,
         },
       };
     }
   }
 
-  // Validar desplazamiento con la visita posterior
+  // Validar desplazamiento con la visita posterior (Regla B Dinámica)
   if (immediateNext) {
-    const isDifferentSite = immediateNext.siteId !== newVisit.siteId;
-    const requiredMargin = isDifferentSite
-      ? MIN_TRAVEL_MINUTES_DIFFERENT_SITES
-      : MIN_TRAVEL_MINUTES_SAME_SITE;
+    const currentSite = resolveSite(newVisit.siteId, undefined, sitesMap);
+    const nextSite = resolveSite(immediateNext.siteId, immediateNext.site, sitesMap);
+
+    const travelEstimate = getOfflineTravelEstimate(currentSite, nextSite);
+    const requiredMargin = travelEstimate.totalRequiredMinutes;
     const actualMargin = immediateNextStart - endMinutes;
 
     if (actualMargin < requiredMargin) {
-      const nextSiteName = immediateNext.site?.name || 'la obra posterior';
+      const nextSiteName = nextSite.name || 'la obra posterior';
+      const detailBreakdown =
+        travelEstimate.drivingMinutes > 0
+          ? ` (${travelEstimate.drivingMinutes} min conducción + ${travelEstimate.bufferMinutes} min margen)`
+          : '';
+      const routeText = travelEstimate.routeSummary ? ` [${travelEstimate.routeSummary}]` : '';
+
       return {
         isValid: false,
         rule: 'RULE_B',
         code: 'INSUFFICIENT_TRAVEL_TIME',
-        message: `Tiempo de desplazamiento insuficiente: se requieren al menos ${requiredMargin} minutos de traslado hacia "${nextSiteName}" (comienza a las ${immediateNext.startTime}). Margen actual disponible: ${actualMargin} minutos.`,
+        message: `Tiempo de desplazamiento insuficiente: se requieren al menos ${requiredMargin} minutos de traslado hacia "${nextSiteName}"${detailBreakdown}${routeText} (comienza a las ${immediateNext.startTime}). Margen actual disponible: ${actualMargin} minutos.`,
         details: {
           conflictingVisitId: immediateNext.id,
           conflictingSiteName: nextSiteName,
           requiredGapMinutes: requiredMargin,
           actualGapMinutes: actualMargin,
           direction: 'NEXT',
+          travelEstimate,
         },
       };
     }

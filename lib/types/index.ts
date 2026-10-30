@@ -16,6 +16,19 @@ export interface SiteDTO {
   name: string;
   municipality: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface TravelEstimate {
+  originSite: SiteDTO;
+  destSite: SiteDTO;
+  drivingMinutes: number;
+  bufferMinutes: number;
+  totalRequiredMinutes: number;
+  distanceKm: number;
+  provider: 'google-maps' | 'offline-matrix' | 'haversine' | 'same-site';
+  routeSummary?: string;
 }
 
 export interface VisitDTO {
@@ -66,6 +79,7 @@ export interface ValidationFailure {
     requiredGapMinutes?: number;
     actualGapMinutes?: number;
     direction?: 'PREVIOUS' | 'NEXT';
+    travelEstimate?: TravelEstimate;
   };
 }
 

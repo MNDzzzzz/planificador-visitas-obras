@@ -32,6 +32,8 @@ model Site {
   name         String
   municipality String
   address      String
+  latitude     Float?
+  longitude    Float?
   createdAt    DateTime @default(now())
   visits       Visit[]
 

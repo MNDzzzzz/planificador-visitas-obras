@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { prisma } from '../prisma';
-import { ActionResult, CreateVisitInput, SiteDTO, TechnicianDTO, VisitDTO } from '../types';
+import { ActionResult, CreateVisitInput, SiteDTO, TechnicianDTO, TravelEstimate, VisitDTO } from '../types';
 import { cancelVisitSchema, createVisitSchema } from '../validation/schemas';
 import { calculateEndTime, validateVisitScheduling } from '../validation/rules';
+import { getTravelEstimate, officialSites } from '../geo/routing';
 
 // Datos de fallback en memoria si la base de datos aún no está conectada
 let memoryTechnicians: TechnicianDTO[] = [
@@ -42,44 +43,7 @@ let memoryTechnicians: TechnicianDTO[] = [
   },
 ];
 
-let memorySites: SiteDTO[] = [
-  {
-    id: 'site-rozas',
-    name: 'Residencial Monte Rozas',
-    municipality: 'Las Rozas de Madrid',
-    address: 'Calle Camilo José Cela 14',
-  },
-  {
-    id: 'site-getafe',
-    name: 'Polígono Logístico Los Gavilanes',
-    municipality: 'Getafe',
-    address: 'Avenida de las Trece Rosas 8',
-  },
-  {
-    id: 'site-alcobendas',
-    name: 'Edificio Sanitario Norte',
-    municipality: 'Alcobendas',
-    address: 'Paseo de la Chopera 45',
-  },
-  {
-    id: 'site-pozuelo',
-    name: 'Parque Empresarial Mirador',
-    municipality: 'Pozuelo de Alarcón',
-    address: 'Vía de las Dos Castillas 33',
-  },
-  {
-    id: 'site-alcala',
-    name: 'Rehabilitación Edificio Siglo XVIII',
-    municipality: 'Alcalá de Henares',
-    address: 'Calle Mayor 62',
-  },
-  {
-    id: 'site-sanse',
-    name: 'Centro Tecnológico Infantas',
-    municipality: 'San Sebastián de los Reyes',
-    address: 'Avenida de Europa 12',
-  },
-];
+let memorySites: SiteDTO[] = [...officialSites];
 
 const todayStr = new Date().toISOString().split('T')[0];
 
@@ -89,7 +53,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-carlos',
     technician: memoryTechnicians[0],
     siteId: 'site-rozas',
-    site: memorySites[0],
+    site: memorySites.find((s) => s.id === 'site-rozas'),
     date: todayStr,
     startTime: '08:30',
     durationMinutes: 90,
@@ -102,7 +66,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-carlos',
     technician: memoryTechnicians[0],
     siteId: 'site-pozuelo',
-    site: memorySites[3],
+    site: memorySites.find((s) => s.id === 'site-pozuelo'),
     date: todayStr,
     startTime: '11:00',
     durationMinutes: 120,
@@ -115,7 +79,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-laura',
     technician: memoryTechnicians[1],
     siteId: 'site-getafe',
-    site: memorySites[1],
+    site: memorySites.find((s) => s.id === 'site-getafe'),
     date: todayStr,
     startTime: '09:00',
     durationMinutes: 60,
@@ -128,7 +92,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-laura',
     technician: memoryTechnicians[1],
     siteId: 'site-alcobendas',
-    site: memorySites[2],
+    site: memorySites.find((s) => s.id === 'site-alcobendas'),
     date: todayStr,
     startTime: '10:15',
     durationMinutes: 45,
@@ -141,7 +105,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-alejandro',
     technician: memoryTechnicians[2],
     siteId: 'site-alcala',
-    site: memorySites[4],
+    site: memorySites.find((s) => s.id === 'site-alcala'),
     date: todayStr,
     startTime: '08:00',
     durationMinutes: 120,
@@ -154,7 +118,7 @@ let memoryVisits: VisitDTO[] = [
     technicianId: 'tech-alejandro',
     technician: memoryTechnicians[2],
     siteId: 'site-alcala',
-    site: memorySites[4],
+    site: memorySites.find((s) => s.id === 'site-alcala'),
     date: todayStr,
     startTime: '10:00',
     durationMinutes: 60,
@@ -216,9 +180,26 @@ export async function getInitialDataAction(): Promise<{
 
       return {
         technicians: techs,
-        sites,
+        sites: sites.map((s) => ({
+          id: s.id,
+          name: s.name,
+          municipality: s.municipality,
+          address: s.address,
+          latitude: s.latitude,
+          longitude: s.longitude,
+        })),
         visits: visits.map((v) => ({
           ...v,
+          site: v.site
+            ? {
+                id: v.site.id,
+                name: v.site.name,
+                municipality: v.site.municipality,
+                address: v.site.address,
+                latitude: v.site.latitude,
+                longitude: v.site.longitude,
+              }
+            : undefined,
           status: v.status as 'SCHEDULED' | 'CANCELLED',
           createdAt: v.createdAt.toISOString(),
           updatedAt: v.updatedAt.toISOString(),
@@ -262,6 +243,16 @@ export async function getVisitsAction(filters?: {
 
       return visits.map((v) => ({
         ...v,
+        site: v.site
+          ? {
+              id: v.site.id,
+              name: v.site.name,
+              municipality: v.site.municipality,
+              address: v.site.address,
+              latitude: v.site.latitude,
+              longitude: v.site.longitude,
+            }
+          : undefined,
         status: v.status as 'SCHEDULED' | 'CANCELLED',
         createdAt: v.createdAt.toISOString(),
         updatedAt: v.updatedAt.toISOString(),
@@ -314,36 +305,68 @@ export async function scheduleVisitAction(input: CreateVisitInput): Promise<Acti
     const validData = parseResult.data;
     const computedEndTime = calculateEndTime(validData.startTime, validData.durationMinutes);
 
-    // 2. Obtener visitas existentes para ese técnico en esa fecha
+    // 2. Obtener visitas existentes para ese técnico en esa fecha y catálogo de obras
     const dbOk = await isDatabaseAvailable();
     let existingVisits: VisitDTO[] = [];
+    const sitesMap = new Map<string, SiteDTO>();
+
+    // Cargar catálogo oficial por defecto
+    for (const s of officialSites) {
+      sitesMap.set(s.id, s);
+    }
 
     if (dbOk) {
-      const dbVisits = await prisma.visit.findMany({
-        where: {
-          technicianId: validData.technicianId,
-          date: validData.date,
-        },
-        include: { technician: true, site: true },
-        orderBy: { startTime: 'asc' },
-      });
+      const [dbVisits, dbSites] = await Promise.all([
+        prisma.visit.findMany({
+          where: {
+            technicianId: validData.technicianId,
+            date: validData.date,
+          },
+          include: { technician: true, site: true },
+          orderBy: { startTime: 'asc' },
+        }),
+        prisma.site.findMany(),
+      ]);
+
+      for (const s of dbSites) {
+        const withCoords = s as unknown as { latitude?: number | null; longitude?: number | null };
+        sitesMap.set(s.id, {
+          ...s,
+          latitude: withCoords.latitude ?? undefined,
+          longitude: withCoords.longitude ?? undefined,
+        });
+      }
 
       existingVisits = dbVisits.map((v) => ({
         ...v,
+        site: v.site
+          ? {
+              id: v.site.id,
+              name: v.site.name,
+              municipality: v.site.municipality,
+              address: v.site.address,
+              latitude: v.site.latitude,
+              longitude: v.site.longitude,
+            }
+          : undefined,
         status: v.status as 'SCHEDULED' | 'CANCELLED',
         createdAt: v.createdAt.toISOString(),
         updatedAt: v.updatedAt.toISOString(),
       }));
     } else {
+      for (const s of memorySites) {
+        sitesMap.set(s.id, s);
+      }
       existingVisits = memoryVisits.filter(
         (v) => v.technicianId === validData.technicianId && v.date === validData.date
       );
     }
 
-    // 3. Ejecución del motor puro de validación (Reglas A, B y C)
+    // 3. Ejecución del motor puro de validación (Reglas A, B Dinámica y C)
     const validation = validateVisitScheduling({
       newVisit: validData,
       existingVisits,
+      sitesMap,
     });
 
     if (!validation.isValid) {
@@ -377,6 +400,16 @@ export async function scheduleVisitAction(input: CreateVisitInput): Promise<Acti
         success: true,
         data: {
           ...created,
+          site: created.site
+            ? {
+                id: created.site.id,
+                name: created.site.name,
+                municipality: created.site.municipality,
+                address: created.site.address,
+                latitude: created.site.latitude,
+                longitude: created.site.longitude,
+              }
+            : undefined,
           status: created.status as 'SCHEDULED' | 'CANCELLED',
           createdAt: created.createdAt.toISOString(),
           updatedAt: created.updatedAt.toISOString(),
@@ -449,6 +482,16 @@ export async function cancelVisitAction(visitId: string): Promise<ActionResult<V
         success: true,
         data: {
           ...updated,
+          site: updated.site
+            ? {
+                id: updated.site.id,
+                name: updated.site.name,
+                municipality: updated.site.municipality,
+                address: updated.site.address,
+                latitude: updated.site.latitude,
+                longitude: updated.site.longitude,
+              }
+            : undefined,
           status: updated.status as 'SCHEDULED' | 'CANCELLED',
           createdAt: updated.createdAt.toISOString(),
           updatedAt: updated.updatedAt.toISOString(),
@@ -476,6 +519,83 @@ export async function cancelVisitAction(visitId: string): Promise<ActionResult<V
     return {
       success: false,
       error: `No se pudo cancelar la visita: ${errorMessage}`,
+    };
+  }
+}
+
+/**
+ * Estimar tiempo y distancia de traslado entre dos obras (con Google Maps o Matriz Offline)
+ */
+export async function getEstimatedTravelAction(
+  originSiteId: string,
+  destSiteId: string
+): Promise<ActionResult<TravelEstimate>> {
+  if (!originSiteId || !destSiteId) {
+    return {
+      success: false,
+      error: 'Debe especificar tanto la obra de origen como la de destino.',
+    };
+  }
+
+  try {
+    let originSite: SiteDTO | undefined;
+    let destSite: SiteDTO | undefined;
+
+    const dbOk = await isDatabaseAvailable();
+    if (dbOk) {
+      const sites = await prisma.site.findMany({
+        where: { id: { in: [originSiteId, destSiteId] } },
+      });
+      const oDb = sites.find((s) => s.id === originSiteId);
+      const dDb = sites.find((s) => s.id === destSiteId);
+      if (oDb) {
+        const oWithCoords = oDb as unknown as { latitude?: number | null; longitude?: number | null };
+        originSite = {
+          ...oDb,
+          latitude: oWithCoords.latitude ?? undefined,
+          longitude: oWithCoords.longitude ?? undefined,
+        };
+      }
+      if (dDb) {
+        const dWithCoords = dDb as unknown as { latitude?: number | null; longitude?: number | null };
+        destSite = {
+          ...dDb,
+          latitude: dWithCoords.latitude ?? undefined,
+          longitude: dWithCoords.longitude ?? undefined,
+        };
+      }
+    }
+
+    if (!originSite) {
+      originSite =
+        memorySites.find((s) => s.id === originSiteId) ||
+        officialSites.find((s) => s.id === originSiteId);
+    }
+    if (!destSite) {
+      destSite =
+        memorySites.find((s) => s.id === destSiteId) ||
+        officialSites.find((s) => s.id === destSiteId);
+    }
+
+    if (!originSite || !destSite) {
+      return {
+        success: false,
+        error: 'Una o ambas obras no fueron encontradas en el registro del laboratorio.',
+      };
+    }
+
+    const estimate = await getTravelEstimate(originSite, destSite);
+    return {
+      success: true,
+      data: estimate,
+    };
+  } catch (err: unknown) {
+    console.error('Error calculando estimación de traslado:', err);
+    return {
+      success: false,
+      error: `Error al calcular la estimación de ruta: ${
+        err instanceof Error ? err.message : 'Error desconocido'
+      }`,
     };
   }
 }

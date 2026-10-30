@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { VisitDTO } from '../lib/types';
+import { SiteDTO, VisitDTO } from '../lib/types';
 import {
   Clock,
   MapPin,
@@ -13,7 +13,11 @@ import {
   FileText,
   Building2,
   CalendarPlus,
+  Car,
+  Navigation,
+  AlertTriangle,
 } from 'lucide-react';
+import { getOfflineTravelEstimate } from '../lib/geo/routing';
 import { Language, translations } from '../lib/i18n/translations';
 
 interface VisitsListProps {
@@ -82,22 +86,77 @@ export const VisitsList: React.FC<VisitsListProps> = ({
           const gapMinutes = currStartH * 60 + currStartM - (prevEndH * 60 + prevEndM);
           const isSameSite = prevVisit.siteId === visit.siteId;
 
-          travelBadge = (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] bg-[var(--bg-card-hover)] border border-[var(--border-subtle)] rounded-lg px-3 py-1.5 mb-2">
-              <ArrowRight className="w-3.5 h-3.5 text-[#2997FF]" />
-              {isSameSite ? (
-                <span>{t.travelSameSite}</span>
-              ) : (
-                <span>
-                  {t.travelMarginOk}{' '}
-                  <strong className="tabular-numbers text-[var(--text-primary)] font-semibold">
-                    {gapMinutes} min
-                  </strong>{' '}
-                  ({t.travelRequired})
-                </span>
-              )}
-            </div>
-          );
+          if (isSameSite) {
+            travelBadge = (
+              <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-1.5 mb-2 font-medium">
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{t.sameSiteNoTravel}</span>
+              </div>
+            );
+          } else {
+            const originSite: SiteDTO = prevVisit.site || {
+              id: prevVisit.siteId,
+              name: 'Obra',
+              municipality: 'Madrid',
+              address: '',
+            };
+            const targetSite: SiteDTO = visit.site || {
+              id: visit.siteId,
+              name: 'Obra',
+              municipality: 'Madrid',
+              address: '',
+            };
+            const estimate = getOfflineTravelEstimate(originSite, targetSite);
+            const isMarginOk = gapMinutes >= estimate.totalRequiredMinutes;
+
+            travelBadge = (
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 text-xs rounded-xl px-3 py-2 mb-2 border transition-all ${
+                  isMarginOk
+                    ? 'bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-300'
+                    : 'bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Car className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span>
+                      {t.travelEstimated}:{' '}
+                      <strong className="font-bold tabular-numbers">{estimate.totalRequiredMinutes} min</strong>{' '}
+                      <span className="opacity-80 font-normal">
+                        ({estimate.drivingMinutes} min {t.drivingTime} + {estimate.bufferMinutes} min {t.bufferTime})
+                      </span>
+                    </span>
+                  </div>
+
+                  {estimate.routeSummary && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/10 border border-white/15">
+                      <Navigation className="w-2.5 h-2.5 text-[#2997FF]" />
+                      <span>{estimate.routeSummary}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 font-medium text-[11px]">
+                  {isMarginOk ? (
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>
+                        {t.travelMarginAvailable}: <strong className="tabular-numbers">{gapMinutes} min</strong> ({t.travelMarginOk})
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-rose-500">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>
+                        {t.travelMarginAvailable}: <strong className="tabular-numbers">{gapMinutes} min</strong> ({t.travelMarginInsufficient})
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          }
         }
 
         return (

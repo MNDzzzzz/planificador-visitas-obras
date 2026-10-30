@@ -183,6 +183,80 @@ describe('Server Actions: Visitas y Cancelaciones', () => {
     expect(validBetween.success).toBe(true);
   });
 
+  it('permite programar visitas consecutivas en la MISMA OBRA con 0 minutos de margen', async () => {
+    const sameSiteDate = '2026-11-22';
+    const techLaura = 'tech-laura';
+    const siteTerrassa = 'site-terrassa-nord';
+
+    // 1. Primera visita: 08:30 a 09:30 en Terrassa
+    const firstVisit = await scheduleVisitAction({
+      technicianId: techLaura,
+      siteId: siteTerrassa,
+      date: sameSiteDate,
+      startTime: '08:30',
+      durationMinutes: 60,
+      notes: 'Inspección primera fase',
+    });
+    expect(firstVisit.success).toBe(true);
+
+    // 2. Segunda visita consecutiva en la MISMA obra: 09:30 a 10:30 (0 min de margen)
+    const secondVisit = await scheduleVisitAction({
+      technicianId: techLaura,
+      siteId: siteTerrassa,
+      date: sameSiteDate,
+      startTime: '09:30',
+      durationMinutes: 60,
+      notes: 'Inspección segunda fase inmediata',
+    });
+    expect(secondVisit.success).toBe(true);
+    expect(secondVisit.data?.status).toBe('SCHEDULED');
+  });
+
+  it('valida dinámicamente el tiempo de traslado calibrado en la Server Action (Terrassa a Sabadell: 19 min)', async () => {
+    const dynamicDate = '2026-11-25';
+    const techAlejandro = 'tech-alejandro';
+    const siteTerrassa = 'site-terrassa-nord';
+    const siteSabadell = 'site-sabadell-centre';
+
+    // 1. Programamos visita en Terrassa de 08:30 a 09:30
+    const visitTerrassa = await scheduleVisitAction({
+      technicianId: techAlejandro,
+      siteId: siteTerrassa,
+      date: dynamicDate,
+      startTime: '08:30',
+      durationMinutes: 60,
+    });
+    expect(visitTerrassa.success).toBe(true);
+
+    // 2. Intento de visita en Sabadell a las 09:45 (solo 15 min de margen vs 19 min requeridos: 14 min conducción + 5 min buffer)
+    const failDynamic = await scheduleVisitAction({
+      technicianId: techAlejandro,
+      siteId: siteSabadell,
+      date: dynamicDate,
+      startTime: '09:45',
+      durationMinutes: 60,
+    });
+
+    expect(failDynamic.success).toBe(false);
+    expect(failDynamic.rule).toBe('RULE_B');
+    expect(failDynamic.code).toBe('INSUFFICIENT_TRAVEL_TIME');
+    expect((failDynamic.details as { requiredGapMinutes?: number })?.requiredGapMinutes).toBe(19);
+    expect((failDynamic.details as { actualGapMinutes?: number })?.actualGapMinutes).toBe(15);
+    expect(failDynamic.error).toContain('19 minutos');
+
+    // 3. Intento de visita en Sabadell a las 09:50 (20 min de margen >= 19 min requeridos)
+    const passDynamic = await scheduleVisitAction({
+      technicianId: techAlejandro,
+      siteId: siteSabadell,
+      date: dynamicDate,
+      startTime: '09:50',
+      durationMinutes: 60,
+    });
+
+    expect(passDynamic.success).toBe(true);
+    expect(passDynamic.data?.status).toBe('SCHEDULED');
+  });
+
   it('carga datos iniciales completos estructurados', async () => {
     const initialData = await getInitialDataAction();
     expect(initialData.technicians.length).toBeGreaterThan(0);

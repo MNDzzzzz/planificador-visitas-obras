@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { SiteDTO, TechnicianDTO, VisitDTO } from '../lib/types';
 import { timeToMinutes } from '../lib/validation/rules';
+import { getOfflineTravelEstimate } from '../lib/geo/routing';
 import { Language, translations } from '../lib/i18n/translations';
 
 interface TimelineViewProps {
@@ -25,6 +26,7 @@ interface TimelineViewProps {
 
 export const TimelineView: React.FC<TimelineViewProps> = ({
   technicians,
+  sites,
   visits,
   selectedDate,
   language,
@@ -79,6 +81,13 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
   // Filtrar visitas de la fecha seleccionada
   const dateVisits = visits.filter((v) => v.date === selectedDate);
+
+  // Mapa de obras para resolución ultra-rápida
+  const sitesMap = React.useMemo(() => {
+    const map = new Map<string, SiteDTO>();
+    sites.forEach((s) => map.set(s.id, s));
+    return map;
+  }, [sites]);
 
   return (
     <div className="w-full bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl shadow-sm overflow-hidden flex flex-col">
@@ -154,13 +163,18 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
 
               const activeVisits = techVisits.filter((v) => v.status === 'SCHEDULED');
 
-              // Cálculo de bloques de traslado obligatorio entre obras diferentes (>= 30 min)
+              // Cálculo dinámico de bloques de traslado con geolocalización y matriz
               const travelBlocks: {
                 top: number;
                 height: number;
                 prevSite: string;
                 nextSite: string;
-                minutes: number;
+                drivingMinutes: number;
+                bufferMinutes: number;
+                totalRequiredMinutes: number;
+                distanceKm: number;
+                routeSummary?: string;
+                gapMinutes: number;
               }[] = [];
 
               for (let i = 0; i < activeVisits.length - 1; i++) {
@@ -168,18 +182,39 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 const next = activeVisits[i + 1];
 
                 if (current.siteId !== next.siteId) {
-                  const endCurrent = timeToMinutes(current.endTime);
-                  const startNext = timeToMinutes(next.startTime);
-                  const gapMinutes = startNext - endCurrent;
+                  const currentSite: SiteDTO = current.site || sitesMap.get(current.siteId) || {
+                    id: current.siteId,
+                    name: 'Obra',
+                    municipality: 'Madrid',
+                    address: '',
+                  };
+                  const nextSite: SiteDTO = next.site || sitesMap.get(next.siteId) || {
+                    id: next.siteId,
+                    name: 'Obra',
+                    municipality: 'Madrid',
+                    address: '',
+                  };
+                  const estimate = getOfflineTravelEstimate(currentSite, nextSite);
 
-                  if (gapMinutes >= 30) {
-                    travelBlocks.push({
-                      top: (endCurrent - START_MINUTE) * PIXELS_PER_MINUTE,
-                      height: 30 * PIXELS_PER_MINUTE,
-                      prevSite: current.site?.name || 'Obra',
-                      nextSite: next.site?.name || 'Obra',
-                      minutes: gapMinutes,
-                    });
+                  if (estimate.totalRequiredMinutes > 0) {
+                    const endCurrent = timeToMinutes(current.endTime);
+                    const startNext = timeToMinutes(next.startTime);
+                    const gapMinutes = startNext - endCurrent;
+
+                    if (gapMinutes >= estimate.totalRequiredMinutes) {
+                      travelBlocks.push({
+                        top: (endCurrent - START_MINUTE) * PIXELS_PER_MINUTE,
+                        height: estimate.totalRequiredMinutes * PIXELS_PER_MINUTE,
+                        prevSite: currentSite?.name || 'Obra',
+                        nextSite: nextSite?.name || 'Obra',
+                        drivingMinutes: estimate.drivingMinutes,
+                        bufferMinutes: estimate.bufferMinutes,
+                        totalRequiredMinutes: estimate.totalRequiredMinutes,
+                        distanceKm: estimate.distanceKm,
+                        routeSummary: estimate.routeSummary,
+                        gapMinutes,
+                      });
+                    }
                   }
                 }
               }
@@ -217,22 +252,24 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                       );
                     })}
 
-                    {/* Bloques de Traslado Rayados */}
+                    {/* Bloques de Traslado Dinámico Rayados (Apple Design) */}
                     {travelBlocks.map((tb, idx) => (
                       <div
                         key={`travel-${idx}`}
-                        className="absolute left-1 right-1 rounded-lg border border-dashed border-amber-500/50 p-1 flex items-center justify-center text-center overflow-hidden z-0 pointer-events-none"
+                        className="absolute left-1 right-1 rounded-lg border border-dashed border-amber-500/50 p-1 flex items-center justify-center text-center overflow-hidden z-0 pointer-events-none transition-all"
                         style={{
                           top: `${tb.top}px`,
-                          height: `${tb.height}px`,
+                          height: `${Math.max(tb.height, 26)}px`,
                           background:
                             'repeating-linear-gradient(45deg, rgba(245,158,11,0.12), rgba(245,158,11,0.12) 5px, transparent 5px, transparent 10px)',
                         }}
-                        title={t.travelBlockTooltip}
+                        title={`${t.travelEstimated}: ${tb.totalRequiredMinutes} min (${tb.drivingMinutes} min ${t.drivingTime} + ${tb.bufferMinutes} min ${t.bufferTime})${tb.routeSummary ? ` • ${tb.routeSummary}` : ''}`}
                       >
-                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-mono font-semibold flex items-center gap-1 bg-[var(--bg-card)]/90 px-1.5 py-0.5 rounded shadow-sm">
-                          <Car className="w-2.5 h-2.5 text-amber-500" />
-                          <span>{t.travelBlockLabel}</span>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-300 font-mono font-semibold flex items-center gap-1 bg-[var(--bg-card)]/90 px-1.5 py-0.5 rounded shadow-sm truncate">
+                          <Car className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                          <span className="tabular-numbers">
+                            {tb.totalRequiredMinutes}m ({tb.drivingMinutes}m + {tb.bufferMinutes}m)
+                          </span>
                         </span>
                       </div>
                     ))}

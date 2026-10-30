@@ -181,4 +181,29 @@ VERIFICACIÓN TOPOGRÁFICA Y GEOMÉTRICA DE ESTRUCTURAS DE HORMIGÓN Y ACERO:
     `,
     tags: ['topografía', 'control dimensional', 'desplome', 'tolerancias', 'replanteo', 'estación total', 'niveles', 'une-en 13670'],
   },
+  {
+    id: 'DOC-11',
+    title: 'Protocolo de Rutas, Desplazamientos y Logística de Inspección en el Vallès',
+    category: 'Operativa y Logística',
+    content: `
+PROTOCOLO DINÁMICO DE RUTAS Y LOGÍSTICA DE LABORATORIO (VALLÈS Y ÁREA METROPOLITANA):
+1. Modelo Dinámico de Traslado (Regla B):
+   - El tiempo de desplazamiento entre visitas técnicas se calcula en base a matrices calibradas de tráfico y distancias reales por red viaria (C-58, C-16, AP-7, B-30, C-60).
+   - Todo trayecto entre obras distintas incorpora un margen de seguridad logístico obligatorio de +5 minutos (buffer) destinado a aparcamiento, control de accesos a obra, custodia térmica de probetas frescas en cajón amortiguado y limpieza/acondicionamiento del cono de Abrams y varillas normalizadas.
+2. Tiempos Calibrados de Referencia en el Vallès:
+   - Terrassa <-> Sabadell (C-58, ~10.5 km): 14 min conducción + 5 min buffer = 19 min de traslado mínimo.
+   - Terrassa <-> Rubí (C-16, ~11.2 km): 15 min conducción + 5 min buffer = 20 min de traslado mínimo.
+   - Terrassa <-> Sant Cugat (C-16/B-30, ~17.8 km): 19 min conducción + 5 min buffer = 24 min de traslado mínimo.
+   - Terrassa <-> Granollers (C-155/AP-7, ~31.5 km): 27 min conducción + 5 min buffer = 32 min de traslado mínimo.
+   - Sabadell <-> Sant Cugat (AP-7/B-30, ~15.1 km): 17 min conducción + 5 min buffer = 22 min de traslado mínimo.
+   - Sabadell <-> Granollers (AP-7, ~22.4 km): 22 min conducción + 5 min buffer = 27 min de traslado mínimo.
+   - Granollers <-> Mataró (C-60 Túnel de Parpers, ~17.6 km): 18 min conducción + 5 min buffer = 23 min de traslado mínimo.
+   - Barcelona 22@ <-> Sabadell/Terrassa (C-58, ~26-33 km): 26 a 32 min conducción + 5 min buffer = 31 a 37 min de traslado.
+3. Consecutividad en la Misma Obra:
+   - Si dos visitas se realizan en el mismo emplazamiento, el tiempo de traslado requerido es estrictamente de 0 minutos (continuidad operativa inmediata).
+4. Fallback y Casos Especiales:
+   - Para municipios no tabulados, el sistema aplica la fórmula geodésica Haversine afectada por un factor de tortuosidad vial de 1.32 más 5 minutos de buffer. En ausencia de coordenadas se aplica el margen preventivo por defecto de 30 minutos.
+    `,
+    tags: ['rutas', 'valles', 'desplazamiento', 'c-58', 'ap-7', 'c-16', 'c-60', 'terrassa', 'sabadell', 'sant cugat', 'rubi', 'granollers', 'mataro', 'buffer 5 min', 'logistica'],
+  },
 ];
